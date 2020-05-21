@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Dmitry Kotlyarov.
+ * Copyright (C) 2020 Dmitry Kotlyarov.
  * All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package pro.apphub.aws.cloudwatch.log4j2;
+package systems.microservice.log4j2.elasticsearch.appender;
 
 /**
  * @author Dmitry Kotlyarov

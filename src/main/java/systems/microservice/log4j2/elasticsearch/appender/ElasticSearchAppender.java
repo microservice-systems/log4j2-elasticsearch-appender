@@ -17,17 +17,7 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.regions.RegionUtils;
-import com.amazonaws.services.logs.AWSLogsClient;
-import com.amazonaws.services.logs.model.CreateLogStreamRequest;
-import com.amazonaws.services.logs.model.DescribeLogGroupsRequest;
-import com.amazonaws.services.logs.model.DescribeLogGroupsResult;
-import com.amazonaws.services.logs.model.DescribeLogStreamsRequest;
-import com.amazonaws.services.logs.model.DescribeLogStreamsResult;
-import com.amazonaws.services.logs.model.InputLogEvent;
-import com.amazonaws.services.logs.model.LogGroup;
-import com.amazonaws.services.logs.model.LogStream;
+import org.apache.http.HttpHost;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
@@ -37,17 +27,15 @@ import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.layout.PatternLayout;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestHighLevelClient;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
-import java.net.InetAddress;
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.UnknownHostException;
-import java.util.List;
+import java.net.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -55,16 +43,16 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Dmitry Kotlyarov
  * @since 1.0
  */
-@Plugin(name = "CloudWatchAppender", category = "Core", elementType = "appender", printObject = true)
-public final class CloudWatchAppender extends AbstractAppender {
+@Plugin(name = "ElasticSearch", category = "Core", elementType = "appender", printObject = true)
+public final class ElasticSearchAppender extends AbstractAppender {
     public static final String INSTANCE = retrieveInstance();
 
     private final AtomicBoolean enabled = new AtomicBoolean(false);
     private final AtomicBoolean flag = new AtomicBoolean(true);
     private final AtomicLong lost = new AtomicLong(0L);
+    private final RestHighLevelClient client;
     private final String group;
     private final String stream;
-    private final AWSLogsClient client;
     private final int capacity;
     private final Buffer buffer1;
     private final Buffer buffer2;
@@ -74,24 +62,22 @@ public final class CloudWatchAppender extends AbstractAppender {
     private final Thread flushThread;
     private FlushInfo flushInfo;
 
-    public CloudWatchAppender(String name,
-                              String group,
-                              String streamPrefix,
-                              String streamPostfix,
-                              String region,
-                              String access,
-                              String secret,
-                              int capacity,
-                              int length,
-                              int span,
-                              Filter filter,
-                              Layout<? extends Serializable> layout) {
+    public ElasticSearchAppender(String name,
+                                 String url,
+                                 String group,
+                                 String streamPrefix,
+                                 String streamPostfix,
+                                 int capacity,
+                                 int length,
+                                 int span,
+                                 Filter filter,
+                                 Layout<? extends Serializable> layout) {
         super(name, filter, (layout != null) ? layout : PatternLayout.createDefaultLayout(), false);
 
         if (group != null) {
+            this.client = initClient(url);
             this.group = group;
             this.stream = initStream(streamPrefix, streamPostfix);
-            this.client = initClient(region, access, secret);
             if (!checkGroup(group, client)) {
                 throw new RuntimeException(String.format("Group '%s' is not found", group));
             }
@@ -101,31 +87,31 @@ public final class CloudWatchAppender extends AbstractAppender {
             this.length = length;
             this.span = span;
             this.flushWait = new FlushWait(span);
-            this.flushThread = new Thread(String.format("aws-cloudwatch-log4j2-flush-%s", name)) {
+            this.flushThread = new Thread(String.format("log4j2-elasticsearch-appender-flush-%s", name)) {
                 @Override
                 public void run() {
                     while (enabled.get()) {
                         try {
                             flushWait.await(enabled, buffer1, buffer2);
                             flag.set(false);
-                            flushInfo = buffer1.flush(client, CloudWatchAppender.this.group, stream, flushInfo, lost);
+                            flushInfo = buffer1.flush(client, ElasticSearchAppender.this.group, stream, flushInfo, lost);
                         } catch (Throwable e) {
                         }
                         try {
                             flushWait.await(enabled, buffer1, buffer2);
                             flag.set(true);
-                            flushInfo = buffer2.flush(client, CloudWatchAppender.this.group, stream, flushInfo, lost);
+                            flushInfo = buffer2.flush(client, ElasticSearchAppender.this.group, stream, flushInfo, lost);
                         } catch (Throwable e) {
                         }
                     }
                     try {
                         flag.set(false);
-                        flushInfo = buffer1.flush(client, CloudWatchAppender.this.group, stream, flushInfo, lost);
+                        flushInfo = buffer1.flush(client, ElasticSearchAppender.this.group, stream, flushInfo, lost);
                     } catch (Throwable e) {
                     }
                     try {
                         flag.set(true);
-                        flushInfo = buffer2.flush(client, CloudWatchAppender.this.group, stream, flushInfo, lost);
+                        flushInfo = buffer2.flush(client, ElasticSearchAppender.this.group, stream, flushInfo, lost);
                     } catch (Throwable e) {
                     }
                 }
@@ -196,13 +182,7 @@ public final class CloudWatchAppender extends AbstractAppender {
     @Override
     public void append(LogEvent event) {
         if (enabled.get()) {
-            InputLogEvent e = new InputLogEvent();
-            e.setTimestamp(event.getTimeMillis());
-            String msg = new String(getLayout().toByteArray(event));
-            if (msg.length() > length) {
-                msg = msg.substring(0, length);
-            }
-            e.setMessage(msg);
+            InputLogEvent e = new InputLogEvent("", event, length);
             if (flag.get()) {
                 if (!buffer1.append(e, flushWait)) {
                     if (!buffer2.append(e, flushWait)) {
@@ -220,30 +200,26 @@ public final class CloudWatchAppender extends AbstractAppender {
     }
 
     @PluginFactory
-    public static CloudWatchAppender createAppender(@PluginAttribute("name") String name,
-                                                    @PluginAttribute("group") String group,
-                                                    @PluginAttribute("streamPrefix") String streamPrefix,
-                                                    @PluginAttribute("streamPostfix") String streamPostfix,
-                                                    @PluginAttribute("region") String region,
-                                                    @PluginAttribute("access") String access,
-                                                    @PluginAttribute("secret") String secret,
-                                                    @PluginAttribute("capacity") String capacity,
-                                                    @PluginAttribute("length") String length,
-                                                    @PluginAttribute("span") String span,
-                                                    @PluginElement("Filter") Filter filter,
-                                                    @PluginElement("Layout") Layout<? extends Serializable> layout) {
-        return new CloudWatchAppender((name != null) ? name : "cloudwatch",
-                                      getProperty("aws.cloudwatch.group", "AWS_CLOUDWATCH_GROUP", group, null),
-                                      getProperty("aws.cloudwatch.stream.prefix", "AWS_CLOUDWATCH_STREAM_PREFIX", streamPrefix, null),
-                                      getProperty("aws.cloudwatch.stream.postfix", "AWS_CLOUDWATCH_STREAM_POSTFIX", streamPostfix, null),
-                                      getProperty("aws.cloudwatch.region", "AWS_CLOUDWATCH_REGION", region, null),
-                                      getProperty("aws.cloudwatch.access", "AWS_CLOUDWATCH_ACCESS", access, null),
-                                      getProperty("aws.cloudwatch.secret", "AWS_CLOUDWATCH_SECRET", secret, null),
-                                      Integer.parseInt(getProperty("aws.cloudwatch.capacity", "AWS_CLOUDWATCH_CAPACITY", capacity, "10000")),
-                                      Integer.parseInt(getProperty("aws.cloudwatch.length", "AWS_CLOUDWATCH_LENGTH", length, "4096")),
-                                      Integer.parseInt(getProperty("aws.cloudwatch.span", "AWS_CLOUDWATCH_SPAN", span, "60")),
-                                      filter,
-                                      layout);
+    public static ElasticSearchAppender createAppender(@PluginAttribute("name") String name,
+                                                       @PluginAttribute("url") String url,
+                                                       @PluginAttribute("group") String group,
+                                                       @PluginAttribute("streamPrefix") String streamPrefix,
+                                                       @PluginAttribute("streamPostfix") String streamPostfix,
+                                                       @PluginAttribute("capacity") String capacity,
+                                                       @PluginAttribute("length") String length,
+                                                       @PluginAttribute("span") String span,
+                                                       @PluginElement("Filter") Filter filter,
+                                                       @PluginElement("Layout") Layout<? extends Serializable> layout) {
+        return new ElasticSearchAppender((name != null) ? name : "elasticsearch",
+                                         getProperty("log4j2.elasticsearch.url", "LOG4J2_ELASTICSEARCH_URL", url, null),
+                                         getProperty("log4j2.elasticsearch.group", "LOG4J2_ELASTICSEARCH_GROUP", group, null),
+                                         getProperty("log4j2.elasticsearch.stream.prefix", "LOG4J2_ELASTICSEARCH_STREAM_PREFIX", streamPrefix, null),
+                                         getProperty("log4j2.elasticsearch.stream.postfix", "LOG4J2_ELASTICSEARCH_STREAM_POSTFIX", streamPostfix, null),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.capacity", "LOG4J2_ELASTICSEARCH_CAPACITY", capacity, "10000")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.length", "LOG4J2_ELASTICSEARCH_LENGTH", length, "4096")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.span", "LOG4J2_ELASTICSEARCH_SPAN", span, "60")),
+                                         filter,
+                                         layout);
     }
 
     private static String retrieveInstance() {
@@ -307,47 +283,20 @@ public final class CloudWatchAppender extends AbstractAppender {
         return s;
     }
 
-    private static AWSLogsClient initClient(String region, String access, String secret) {
-        AWSLogsClient client;
-        if ((access != null) && (secret != null)) {
-            client = new AWSLogsClient(new BasicAWSCredentials(access, secret));
-        } else {
-            client = new AWSLogsClient();
+    private static RestHighLevelClient initClient(String url) {
+        try {
+            URL u = new URL(url);
+            return new RestHighLevelClient(RestClient.builder(new HttpHost(u.getHost(), u.getPort(), u.getProtocol())));
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException(e);
         }
-        if (region != null) {
-            client.setRegion(RegionUtils.getRegion(region));
-        }
-        return client;
     }
 
-    private static boolean checkGroup(String group, AWSLogsClient client) {
-        DescribeLogGroupsResult dlgr = client.describeLogGroups(new DescribeLogGroupsRequest().withLogGroupNamePrefix(group));
-        if (dlgr != null) {
-            List<LogGroup> lgs = dlgr.getLogGroups();
-            if (lgs != null) {
-                for (LogGroup lg : lgs) {
-                    if (lg.getLogGroupName().equals(group)) {
-                        return true;
-                    }
-                }
-            }
-        }
+    private static boolean checkGroup(String group, RestHighLevelClient client) {
         return false;
     }
 
-    private static String checkStream(String group, String stream, AWSLogsClient client) {
-        DescribeLogStreamsResult dlsr = client.describeLogStreams(new DescribeLogStreamsRequest(group).withLogStreamNamePrefix(stream));
-        if (dlsr != null) {
-            List<LogStream> lss = dlsr.getLogStreams();
-            if (lss != null) {
-                for (LogStream ls : lss) {
-                    if (ls.getLogStreamName().equals(stream)) {
-                        return ls.getUploadSequenceToken();
-                    }
-                }
-            }
-        }
-        client.createLogStream(new CreateLogStreamRequest(group, stream));
+    private static String checkStream(String group, String stream, RestHighLevelClient client) {
         return null;
     }
 }

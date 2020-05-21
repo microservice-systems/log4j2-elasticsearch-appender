@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Dmitry Kotlyarov.
+ * Copyright (C) 2020 Dmitry Kotlyarov.
  * All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,18 +15,12 @@
  * limitations under the License.
  */
 
-package pro.apphub.aws.cloudwatch.log4j2;
+package systems.microservice.log4j2.elasticsearch.appender;
 
-import com.amazonaws.services.logs.AWSLogsClient;
-import com.amazonaws.services.logs.model.DataAlreadyAcceptedException;
-import com.amazonaws.services.logs.model.InputLogEvent;
-import com.amazonaws.services.logs.model.InvalidSequenceTokenException;
-import com.amazonaws.services.logs.model.PutLogEventsRequest;
-import com.amazonaws.services.logs.model.PutLogEventsResult;
+import org.elasticsearch.client.RestHighLevelClient;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -94,7 +88,7 @@ final class Buffer {
         }
     }
 
-    public FlushInfo flush(AWSLogsClient client, String group, String stream, FlushInfo info, AtomicLong lost) {
+    public FlushInfo flush(RestHighLevelClient client, String group, String stream, FlushInfo info, AtomicLong lost) {
         ready.set(false);
         try {
             while (threads.get() > 0) {
@@ -115,12 +109,7 @@ final class Buffer {
                         e.setMessage(String.format("[EVENTS_LOST]: %d", l));
                         eventsList.add(e);
                     }
-                    Collections.sort(eventsList, new Comparator<InputLogEvent>() {
-                        @Override
-                        public int compare(InputLogEvent o1, InputLogEvent o2) {
-                            return o1.getTimestamp().compareTo(o2.getTimestamp());
-                        }
-                    });
+                    Collections.sort(eventsList);
                     long lst = info.last;
                     if (lst > 0L) {
                         for (InputLogEvent e : eventsList) {
@@ -165,7 +154,7 @@ final class Buffer {
         }
     }
 
-    private String putEvents(AWSLogsClient client,
+    private String putEvents(RestHighLevelClient client,
                              String group,
                              String stream,
                              String token,
