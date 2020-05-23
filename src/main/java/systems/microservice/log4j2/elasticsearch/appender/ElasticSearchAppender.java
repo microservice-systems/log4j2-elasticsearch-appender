@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Serializable;
+import java.lang.management.ManagementFactory;
 import java.net.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -46,6 +47,9 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Plugin(name = "ElasticSearch", category = "Core", elementType = "appender", printObject = true)
 public final class ElasticSearchAppender extends AbstractAppender {
+    public static final String PROCESS = ManagementFactory.getRuntimeMXBean().getName();
+    public static final String HOST_NAME = createHostName();
+    public static final String HOST_ADDRESS = createHostAddress();
     public static final long START = System.currentTimeMillis();
 
     private final AtomicBoolean enabled = new AtomicBoolean(false);
@@ -208,26 +212,19 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                          layout);
     }
 
-    private static String retrieveInstance() {
+    private static String createHostName() {
         try {
-            URL url = new URL("http://169.254.169.254/latest/meta-data/instance-id");
-            URLConnection conn = url.openConnection();
-            conn.setConnectTimeout(10000);
-            try (InputStream in = conn.getInputStream()) {
-                BufferedReader r = new BufferedReader(new InputStreamReader(in));
-                String instance = r.readLine();
-                if (instance != null) {
-                    return instance;
-                } else {
-                    throw new IOException("Instance is null");
-                }
-            }
-        } catch (IOException e) {
-            try {
-                return InetAddress.getLocalHost().getHostName();
-            } catch (UnknownHostException e1) {
-                throw new RuntimeException(e1);
-            }
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            return "unknown";
+        }
+    }
+
+    private static String createHostAddress() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            return "unknown";
         }
     }
 
