@@ -17,6 +17,7 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
+import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.client.RestHighLevelClient;
 
 import java.util.ArrayList;
@@ -32,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 final class Buffer {
     public static final int MAX_BATCH_COUNT = 10000;
-    public static final int MAX_BATCH_SIZE = 1048576;
+    public static final long MAX_BATCH_SIZE = 1048576L;
 
     private final AtomicBoolean ready = new AtomicBoolean(true);
     private final AtomicInteger threads = new AtomicInteger(0);
@@ -88,7 +89,7 @@ final class Buffer {
         }
     }
 
-    public FlushInfo flush(RestHighLevelClient client, String group, String stream, FlushInfo info, AtomicLong lost) {
+    public void flush(RestHighLevelClient client, String group, AtomicLong lost, AtomicLong lostSince) {
         ready.set(false);
         try {
             while (threads.get() > 0) {
@@ -104,80 +105,41 @@ final class Buffer {
                     }
                     long l = lost.getAndSet(0L);
                     if (l > 0L) {
-                        InputLogEvent e = new InputLogEvent();
-                        e.setTimestamp(System.currentTimeMillis());
-                        e.setMessage(String.format("[EVENTS_LOST]: %d", l));
+                        InputLogEvent e = new InputLogEvent(l, lostSince.get(), System.currentTimeMillis());
                         eventsList.add(e);
                     }
                     Collections.sort(eventsList);
-                    long lst = info.last;
-                    if (lst > 0L) {
-                        for (InputLogEvent e : eventsList) {
-                            if (e.getTimestamp() < lst) {
-                                e.setTimestamp(lst);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                    lst = eventsList.get(eventsList.size() - 1).getTimestamp();
-                    String tok = info.token;
-                    int c = 0;
-                    int s = 0;
+                    BulkRequest r = new BulkRequest(group);
                     for (InputLogEvent e : eventsList) {
-                        int es = e.getMessage().length() * 4 + 26;
-                        if ((c + 1 < MAX_BATCH_COUNT) && (s + es < MAX_BATCH_SIZE)) {
-                            c++;
-                            s += es;
+                        if ((r.numberOfActions() < MAX_BATCH_COUNT) && (r.estimatedSizeInBytes() < MAX_BATCH_SIZE)) {
                             eventsBatch.add(e);
                         } else {
-                            tok = putEvents(client, group, stream, tok, lost, eventsBatch);
-                            c = 1;
-                            s = es;
-                            eventsBatch.clear();
+                            putEvents(client, group, lost, r);
+                            r = new BulkRequest(group);
                             eventsBatch.add(e);
                         }
                     }
-                    tok = putEvents(client, group, stream, tok, lost, eventsBatch);
-                    return new FlushInfo(lst, tok);
+                    putEvents(client, group, lost, r);
                 } finally {
                     eventsBatch.clear();
                     eventsList.clear();
                     eventsQueue.clear();
                     size.set(0);
                 }
-            } else {
-                return info;
             }
         } finally {
             ready.set(true);
         }
     }
 
-    private String putEvents(RestHighLevelClient client,
-                             String group,
-                             String stream,
-                             String token,
-                             AtomicLong lost,
-                             ArrayList<InputLogEvent> events) {
-        if (!events.isEmpty()) {
+    private void putEvents(RestHighLevelClient client, String group, AtomicLong lost, BulkRequest request) {
+        int c = request.numberOfActions();
+        if (c > 0) {
             try {
-                PutLogEventsRequest req = new PutLogEventsRequest(group, stream, events);
-                req.setSequenceToken(token);
-                PutLogEventsResult res = client.putLogEvents(req);
-                return res.getNextSequenceToken();
-            } catch (DataAlreadyAcceptedException e) {
-                lost.addAndGet(events.size());
-                return e.getExpectedSequenceToken();
-            } catch (InvalidSequenceTokenException e) {
-                lost.addAndGet(events.size());
-                return e.getExpectedSequenceToken();
+                BulkRequest r = new BulkRequest();
             } catch (Exception e) {
-                lost.addAndGet(events.size());
-                return token;
+                lost.addAndGet(c);
             }
-        } else {
-            return token;
         }
     }
 }

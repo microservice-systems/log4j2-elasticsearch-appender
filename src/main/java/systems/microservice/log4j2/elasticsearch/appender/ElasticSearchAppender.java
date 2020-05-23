@@ -22,6 +22,7 @@ import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
@@ -45,14 +46,14 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Plugin(name = "ElasticSearch", category = "Core", elementType = "appender", printObject = true)
 public final class ElasticSearchAppender extends AbstractAppender {
-    public static final String INSTANCE = retrieveInstance();
+    public static final long START = System.currentTimeMillis();
 
     private final AtomicBoolean enabled = new AtomicBoolean(false);
     private final AtomicBoolean flag = new AtomicBoolean(true);
     private final AtomicLong lost = new AtomicLong(0L);
+    private final AtomicLong lostSince = new AtomicLong(System.currentTimeMillis());
     private final RestHighLevelClient client;
     private final String group;
-    private final String stream;
     private final int capacity;
     private final Buffer buffer1;
     private final Buffer buffer2;
@@ -60,24 +61,20 @@ public final class ElasticSearchAppender extends AbstractAppender {
     private final int span;
     private final FlushWait flushWait;
     private final Thread flushThread;
-    private FlushInfo flushInfo;
 
     public ElasticSearchAppender(String name,
                                  String url,
                                  String group,
-                                 String streamPrefix,
-                                 String streamPostfix,
                                  int capacity,
                                  int length,
                                  int span,
                                  Filter filter,
                                  Layout<? extends Serializable> layout) {
-        super(name, filter, (layout != null) ? layout : PatternLayout.createDefaultLayout(), false);
+        super(name, filter, (layout != null) ? layout : PatternLayout.createDefaultLayout(), false, Property.EMPTY_ARRAY);
 
         if (group != null) {
             this.client = initClient(url);
             this.group = group;
-            this.stream = initStream(streamPrefix, streamPostfix);
             if (!checkGroup(group, client)) {
                 throw new RuntimeException(String.format("Group '%s' is not found", group));
             }
@@ -94,32 +91,30 @@ public final class ElasticSearchAppender extends AbstractAppender {
                         try {
                             flushWait.await(enabled, buffer1, buffer2);
                             flag.set(false);
-                            flushInfo = buffer1.flush(client, ElasticSearchAppender.this.group, stream, flushInfo, lost);
+                            buffer1.flush(client, ElasticSearchAppender.this.group, lost, lostSince);
                         } catch (Throwable e) {
                         }
                         try {
                             flushWait.await(enabled, buffer1, buffer2);
                             flag.set(true);
-                            flushInfo = buffer2.flush(client, ElasticSearchAppender.this.group, stream, flushInfo, lost);
+                            buffer2.flush(client, ElasticSearchAppender.this.group, lost, lostSince);
                         } catch (Throwable e) {
                         }
                     }
                     try {
                         flag.set(false);
-                        flushInfo = buffer1.flush(client, ElasticSearchAppender.this.group, stream, flushInfo, lost);
+                        buffer1.flush(client, ElasticSearchAppender.this.group, lost, lostSince);
                     } catch (Throwable e) {
                     }
                     try {
                         flag.set(true);
-                        flushInfo = buffer2.flush(client, ElasticSearchAppender.this.group, stream, flushInfo, lost);
+                        buffer2.flush(client, ElasticSearchAppender.this.group, lost, lostSince);
                     } catch (Throwable e) {
                     }
                 }
             };
-            this.flushInfo = new FlushInfo(0L, checkStream(group, stream, client));
         } else {
             this.group = null;
-            this.stream = null;
             this.client = null;
             this.capacity = 0;
             this.buffer1 = null;
@@ -128,7 +123,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
             this.span = 0;
             this.flushWait = null;
             this.flushThread = null;
-            this.flushInfo = null;
         }
     }
 
@@ -138,10 +132,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
 
     public String getGroup() {
         return group;
-    }
-
-    public String getStream() {
-        return stream;
     }
 
     public int getCapacity() {
@@ -182,7 +172,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
     @Override
     public void append(LogEvent event) {
         if (enabled.get()) {
-            InputLogEvent e = new InputLogEvent("", event, length);
+            InputLogEvent e = new InputLogEvent(event, length);
             if (flag.get()) {
                 if (!buffer1.append(e, flushWait)) {
                     if (!buffer2.append(e, flushWait)) {
@@ -203,8 +193,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
     public static ElasticSearchAppender createAppender(@PluginAttribute("name") String name,
                                                        @PluginAttribute("url") String url,
                                                        @PluginAttribute("group") String group,
-                                                       @PluginAttribute("streamPrefix") String streamPrefix,
-                                                       @PluginAttribute("streamPostfix") String streamPostfix,
                                                        @PluginAttribute("capacity") String capacity,
                                                        @PluginAttribute("length") String length,
                                                        @PluginAttribute("span") String span,
@@ -213,8 +201,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return new ElasticSearchAppender((name != null) ? name : "elasticsearch",
                                          getProperty("log4j2.elasticsearch.url", "LOG4J2_ELASTICSEARCH_URL", url, null),
                                          getProperty("log4j2.elasticsearch.group", "LOG4J2_ELASTICSEARCH_GROUP", group, null),
-                                         getProperty("log4j2.elasticsearch.stream.prefix", "LOG4J2_ELASTICSEARCH_STREAM_PREFIX", streamPrefix, null),
-                                         getProperty("log4j2.elasticsearch.stream.postfix", "LOG4J2_ELASTICSEARCH_STREAM_POSTFIX", streamPostfix, null),
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.capacity", "LOG4J2_ELASTICSEARCH_CAPACITY", capacity, "10000")),
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.length", "LOG4J2_ELASTICSEARCH_LENGTH", length, "4096")),
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.span", "LOG4J2_ELASTICSEARCH_SPAN", span, "60")),
@@ -272,17 +258,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
         }
     }
 
-    private static String initStream(String prefix, String postfix) {
-        String s = INSTANCE;
-        if (prefix != null) {
-            s = String.format("%s/%s", prefix, s);
-        }
-        if (postfix != null) {
-            s = String.format("%s/%s", s, postfix);
-        }
-        return s;
-    }
-
     private static RestHighLevelClient initClient(String url) {
         try {
             URL u = new URL(url);
@@ -294,9 +269,5 @@ public final class ElasticSearchAppender extends AbstractAppender {
 
     private static boolean checkGroup(String group, RestHighLevelClient client) {
         return false;
-    }
-
-    private static String checkStream(String group, String stream, RestHighLevelClient client) {
-        return null;
     }
 }

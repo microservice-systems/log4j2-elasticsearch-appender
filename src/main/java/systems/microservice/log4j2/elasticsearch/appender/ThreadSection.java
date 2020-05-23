@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package systems.microservice.log4j2.elasticsearch.appender.util.thread;
+package systems.microservice.log4j2.elasticsearch.appender;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -53,7 +53,7 @@ public final class ThreadSection {
             try {
                 Thread.sleep(millis);
             } catch (InterruptedException e) {
-                throw new ThreadSectionException(e);
+                throw new RuntimeException(e);
             }
         }
     }
@@ -75,7 +75,8 @@ public final class ThreadSection {
     public void leave() {
         long ts = threads.decrementAndGet();
         if (ts < 0L) {
-            throw new ThreadSectionError(String.format("Illegal enter/leave calls: %d", ts));
+            threads.incrementAndGet();
+            throw new IllegalStateException(String.format("Illegal enter/leave calls: %d", ts));
         }
     }
 }

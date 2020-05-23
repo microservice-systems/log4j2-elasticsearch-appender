@@ -17,16 +17,28 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
+import java.nio.charset.Charset;
+
 /**
  * @author Dmitry Kotlyarov
  * @since 1.0
  */
-final class FlushInfo {
-    public final long last;
-    public final String token;
+public final class Util {
+    public static final String EMPTY_STRING = "";
+    public static final Charset CHARSET_UTF8 = Charset.forName("UTF-8");
 
-    public FlushInfo(long last, String token) {
-        this.last = last;
-        this.token = token;
+    private Util() {
+    }
+
+    public static String cut(String value, int length) {
+        if (value != null) {
+            if (value.length() <= length) {
+                return value;
+            } else {
+                return value.substring(0, length);
+            }
+        } else {
+            return null;
+        }
     }
 }

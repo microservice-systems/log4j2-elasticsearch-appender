@@ -17,15 +17,18 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.util.StringBuilderWriter;
+import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import systems.microservice.log4j2.elasticsearch.appender.util.string.StringUtil;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.security.SecureRandom;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,21 +43,29 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
     public final long timestamp;
 
-    public InputLogEvent(String index, LogEvent event, int length) {
-        super(index, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
+    public InputLogEvent(LogEvent event, int length) {
+        super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
 
         this.timestamp = event.getTimeMillis();
         this.docAsUpsert(true);
 
         try {
-            XContentBuilder cb = XContentFactory.smileBuilder();
+            XContentBuilder cb = XContentFactory.smileBuilder(new ByteArrayOutputStream((event.getThrown() == null) ? 512 : 1024));
             cb.startObject();
-            cb.timeField("millis", "timestamp", timestamp);
+            cb.timeField("timestamp", "time", timestamp);
+            cb.timeField("start.timestamp", "start.time", ElasticSearchAppender.START);
             addField(cb, "logger", event.getLoggerFqcn(), 256);
             cb.field("thread_id", event.getThreadId());
             addField(cb, "thread_name", event.getThreadName(), 256);
             cb.field("thread_priority", event.getThreadPriority());
-            addField(cb, "level", event.getLevel().toString(), 32);
+            Level l = event.getLevel();
+            if (l != null) {
+                addField(cb, "level", l.toString(), 32);
+            }
+            Message m = event.getMessage();
+            if (m != null) {
+                addField(cb, "message", m.getFormattedMessage(), length);
+            }
             StackTraceElement ste = event.getSource();
             if (ste != null) {
                 cb.field("src", true);
@@ -68,6 +79,15 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                 cb.field("exception", true);
                 addField(cb, "exception.class", ex.getClass().getName(), 256);
                 addField(cb, "exception.message", ex.getMessage(), length);
+                try (StringBuilderWriter sbw = new StringBuilderWriter(1024)) {
+                    ex.printStackTrace(new PrintWriter(sbw, false));
+                    addField(cb, "exception.stacktrace", sbw.toString(), length);
+                }
+                Throwable[] sex = ex.getSuppressed();
+                if (sex != null) {
+                    cb.field("exception.suppressed", true);
+                    cb.field("exception.suppressed.count", sex.length);
+                }
                 Throwable cex = ex.getCause();
                 if (cex != null) {
                     cb.field("exception.cause", true);
@@ -75,11 +95,11 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                     addField(cb, "exception.cause.message", cex.getMessage(), length);
                 }
             }
-            Marker m = event.getMarker();
-            if (m != null) {
+            Marker mrk = event.getMarker();
+            if (mrk != null) {
                 cb.field("marker", true);
-                addField(cb, "marker.name", m.getName(), 256);
-                cb.field("marker.parents", m.hasParents());
+                addField(cb, "marker.name", mrk.getName(), 256);
+                cb.field("marker.parents", mrk.hasParents());
             }
             ReadOnlyStringMap ctx = event.getContextData();
             if (ctx != null) {
@@ -96,7 +116,34 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                     addField(cb, "ctx.exception.message", e.getMessage(), length);
                 }
             }
-            addField(cb, "message", event.getMessage().getFormattedMessage(), length);
+            cb.endObject();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public InputLogEvent(long lost, long lostSince, long lostTo) {
+        super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
+
+        this.timestamp = System.currentTimeMillis();
+        this.docAsUpsert(true);
+
+        try {
+            Thread t = Thread.currentThread();
+            XContentBuilder cb = XContentFactory.smileBuilder(new ByteArrayOutputStream(256));
+            cb.startObject();
+            cb.timeField("timestamp", "time", timestamp);
+            cb.timeField("start.timestamp", "start.time", ElasticSearchAppender.START);
+            cb.field("logger", ElasticSearchAppender.class.getName());
+            cb.field("thread_id", t.getId());
+            cb.field("thread_name", t.getName());
+            cb.field("thread_priority", t.getPriority());
+            cb.field("level", "EVENT");
+            cb.field("message", String.format("Lost %d events", lost));
+            cb.field("event.lost", true);
+            cb.field("event.lost.count", lost);
+            cb.timeField("event.lost.since.timestamp", "event.lost.since.time", lostSince);
+            cb.timeField("event.lost.to.timestamp", "event.lost.to.time", lostTo);
             cb.endObject();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -117,7 +164,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
     private static void addField(XContentBuilder builder, String name, String value, int length) {
         if (value != null) {
             try {
-                builder.field(name, StringUtil.cut(value, length));
+                builder.field(name, Util.cut(value, length));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
