@@ -74,6 +74,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("thread.priority", t.getPriority());
             cb.field("level", "CONTROL");
             cb.field("message", "Hello World!");
+            cb.field("variables", ElasticSearchAppender.VARIABLES);
+            cb.field("properties", ElasticSearchAppender.PROPERTIES);
             cb.endObject();
             this.doc(cb);
         } catch (IOException e) {

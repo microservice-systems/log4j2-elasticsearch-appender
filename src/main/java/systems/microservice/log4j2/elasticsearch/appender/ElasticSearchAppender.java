@@ -52,8 +52,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
     public static final Map<String, String> LOGTAGS = createLogTags();
     public static final String HOST_NAME = createHostName();
     public static final String HOST_IP = createHostIP();
-    public static final String VARIABLES_STRING = createVariablesString();
-    public static final String PROPERTIES_STRING = createPropertiesString();
+    public static final String VARIABLES = createVariables();
+    public static final String PROPERTIES = createProperties();
 
     private final AtomicBoolean enabled = new AtomicBoolean(false);
     private final AtomicBoolean flag = new AtomicBoolean(true);
@@ -80,7 +80,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         super(name, filter, (layout != null) ? layout : PatternLayout.createDefaultLayout(), false, Property.EMPTY_ARRAY);
 
         if (group != null) {
-            this.client = initClient(url);
+            this.client = createClient(url);
             this.group = group;
             if (!checkGroup(group, client)) {
                 throw new RuntimeException(String.format("Group '%s' is not found", group));
@@ -262,7 +262,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         }
     }
 
-    private static String createVariablesString() {
+    private static String createVariables() {
         Map<String, String> evs = System.getenv();
         StringBuilder sb = new StringBuilder(8192);
         for (Map.Entry<String, String> e : evs.entrySet()) {
@@ -278,7 +278,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return sb.toString();
     }
 
-    private static String createPropertiesString() {
+    private static String createProperties() {
         Properties sps = System.getProperties();
         StringBuilder sb = new StringBuilder(8192);
         for (Map.Entry<Object, Object> e : sps.entrySet()) {
@@ -325,7 +325,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         }
     }
 
-    private static RestHighLevelClient initClient(String url) {
+    private static RestHighLevelClient createClient(String url) {
         try {
             URL u = new URL(url);
             return new RestHighLevelClient(RestClient.builder(new HttpHost(u.getHost(), u.getPort(), u.getProtocol())));

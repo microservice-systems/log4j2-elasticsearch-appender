@@ -18,6 +18,7 @@
 package systems.microservice.log4j2.elasticsearch.appender;
 
 import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 
 import java.util.ArrayList;
@@ -32,8 +33,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.0
  */
 final class Buffer {
-    public static final int MAX_BATCH_COUNT = 10000;
-    public static final long MAX_BATCH_SIZE = 1048576L;
+    public static final int BULK_RETRIES = 10;
+    public static final long BULK_RETRIES_SPAN = 3000L;
+    public static final int BULK_MAX_COUNT = 10000;
+    public static final long BULK_MAX_SIZE = 1048576L;
 
     private final AtomicBoolean ready = new AtomicBoolean(true);
     private final AtomicInteger threads = new AtomicInteger(0);
@@ -41,13 +44,11 @@ final class Buffer {
     private final int capacity;
     private final ConcurrentLinkedQueue<InputLogEvent> eventsQueue;
     private final ArrayList<InputLogEvent> eventsList;
-    private final ArrayList<InputLogEvent> eventsBatch;
 
     public Buffer(int capacity) {
         this.capacity = capacity;
         this.eventsQueue = new ConcurrentLinkedQueue<>();
         this.eventsList = new ArrayList<>(capacity + 1);
-        this.eventsBatch = new ArrayList<>(Math.min(capacity + 1, MAX_BATCH_COUNT));
     }
 
     public boolean isReady() {
@@ -111,17 +112,16 @@ final class Buffer {
                     Collections.sort(eventsList);
                     BulkRequest r = new BulkRequest(group);
                     for (InputLogEvent e : eventsList) {
-                        if ((r.numberOfActions() < MAX_BATCH_COUNT) && (r.estimatedSizeInBytes() < MAX_BATCH_SIZE)) {
-                            eventsBatch.add(e);
+                        if ((r.numberOfActions() < BULK_MAX_COUNT) && (r.estimatedSizeInBytes() < BULK_MAX_SIZE)) {
+                            r.add(e);
                         } else {
                             putEvents(client, group, lost, r);
                             r = new BulkRequest(group);
-                            eventsBatch.add(e);
+                            r.add(e);
                         }
                     }
                     putEvents(client, group, lost, r);
                 } finally {
-                    eventsBatch.clear();
                     eventsList.clear();
                     eventsQueue.clear();
                     size.set(0);
@@ -135,9 +135,20 @@ final class Buffer {
     private void putEvents(RestHighLevelClient client, String group, AtomicLong lost, BulkRequest request) {
         int c = request.numberOfActions();
         if (c > 0) {
-            try {
-                BulkRequest r = new BulkRequest();
-            } catch (Exception e) {
+            int i = 0;
+            for (; i < BULK_RETRIES; ++i) {
+                try {
+                    client.bulk(request, RequestOptions.DEFAULT);
+                } catch (Exception e) {
+                    try {
+                        Thread.sleep(BULK_RETRIES_SPAN);
+                    } catch (InterruptedException ex) {
+                    }
+                    continue;
+                }
+                break;
+            }
+            if (i >= BULK_RETRIES) {
                 lost.addAndGet(c);
             }
         }
