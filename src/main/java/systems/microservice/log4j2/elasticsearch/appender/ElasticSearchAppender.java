@@ -31,13 +31,13 @@ import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.net.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -47,10 +47,11 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Plugin(name = "ElasticSearch", category = "Core", elementType = "appender", printObject = true)
 public final class ElasticSearchAppender extends AbstractAppender {
+    public static final long START = System.currentTimeMillis();
     public static final String PROCESS = ManagementFactory.getRuntimeMXBean().getName();
     public static final String HOST_NAME = createHostName();
-    public static final String HOST_ADDRESS = createHostAddress();
-    public static final long START = System.currentTimeMillis();
+    public static final String HOST_IP = createHostIP();
+    public static final Map<String, String> LOG_TAGS = createLogTags();
 
     private final AtomicBoolean enabled = new AtomicBoolean(false);
     private final AtomicBoolean flag = new AtomicBoolean(true);
@@ -220,12 +221,41 @@ public final class ElasticSearchAppender extends AbstractAppender {
         }
     }
 
-    private static String createHostAddress() {
+    private static String createHostIP() {
         try {
             return InetAddress.getLocalHost().getHostAddress();
         } catch (UnknownHostException e) {
             return "unknown";
         }
+    }
+
+    private static Map<String, String> createLogTags() {
+        final String PREFIX_EV = "LOGTAG_";
+        final String PREFIX_SP = "logtag.";
+        Map<String, String> evs = System.getenv();
+        Properties sps = System.getProperties();
+        LinkedHashMap<String, String> lts = new LinkedHashMap<>(evs.size() + sps.size());
+        for (Map.Entry<String, String> e : evs.entrySet()) {
+            String k = e.getKey();
+            String v = e.getValue();
+            if ((k != null) && (v != null)) {
+                if ((k.length() > PREFIX_EV.length()) && k.startsWith(PREFIX_EV)) {
+                    lts.put(k.substring(PREFIX_EV.length()).toLowerCase(), v);
+                }
+            }
+        }
+        for (Map.Entry<Object, Object> e : sps.entrySet()) {
+            Object k = e.getKey();
+            Object v = e.getValue();
+            if ((k != null) && (v != null)) {
+                String ks = k.toString();
+                String vs = v.toString();
+                if ((ks.length() > PREFIX_SP.length()) && ks.startsWith(PREFIX_SP)) {
+                    lts.put(ks.substring(PREFIX_SP.length()).toLowerCase(), vs);
+                }
+            }
+        }
+        return Collections.unmodifiableMap(lts);
     }
 
     private static String getProperty(String property, String variable, String value) {
