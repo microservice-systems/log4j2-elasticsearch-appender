@@ -49,9 +49,11 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class ElasticSearchAppender extends AbstractAppender {
     public static final long START = System.currentTimeMillis();
     public static final String PROCESS = ManagementFactory.getRuntimeMXBean().getName();
+    public static final Map<String, String> LOGTAGS = createLogTags();
     public static final String HOST_NAME = createHostName();
     public static final String HOST_IP = createHostIP();
-    public static final Map<String, String> LOG_TAGS = createLogTags();
+    public static final String VARIABLES_STRING = createVariablesString();
+    public static final String PROPERTIES_STRING = createPropertiesString();
 
     private final AtomicBoolean enabled = new AtomicBoolean(false);
     private final AtomicBoolean flag = new AtomicBoolean(true);
@@ -213,22 +215,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                          layout);
     }
 
-    private static String createHostName() {
-        try {
-            return InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            return "unknown";
-        }
-    }
-
-    private static String createHostIP() {
-        try {
-            return InetAddress.getLocalHost().getHostAddress();
-        } catch (UnknownHostException e) {
-            return "unknown";
-        }
-    }
-
     private static Map<String, String> createLogTags() {
         final String PREFIX_EV = "LOGTAG_";
         final String PREFIX_SP = "logtag.";
@@ -248,14 +234,68 @@ public final class ElasticSearchAppender extends AbstractAppender {
             Object k = e.getKey();
             Object v = e.getValue();
             if ((k != null) && (v != null)) {
-                String ks = k.toString();
-                String vs = v.toString();
-                if ((ks.length() > PREFIX_SP.length()) && ks.startsWith(PREFIX_SP)) {
-                    lts.put(ks.substring(PREFIX_SP.length()).toLowerCase(), vs);
+                if ((k instanceof String) && (v instanceof String)) {
+                    String ks = (String) k;
+                    String vs = (String) v;
+                    if ((ks.length() > PREFIX_SP.length()) && ks.startsWith(PREFIX_SP)) {
+                        lts.put(ks.substring(PREFIX_SP.length()).toLowerCase(), vs);
+                    }
                 }
             }
         }
         return Collections.unmodifiableMap(lts);
+    }
+
+    private static String createHostName() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            return "unknown";
+        }
+    }
+
+    private static String createHostIP() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            return "unknown";
+        }
+    }
+
+    private static String createVariablesString() {
+        Map<String, String> evs = System.getenv();
+        StringBuilder sb = new StringBuilder(8192);
+        for (Map.Entry<String, String> e : evs.entrySet()) {
+            String k = e.getKey();
+            String v = e.getValue();
+            if ((k != null) && (v != null)) {
+                sb.append(k);
+                sb.append("=");
+                sb.append(v);
+                sb.append("\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String createPropertiesString() {
+        Properties sps = System.getProperties();
+        StringBuilder sb = new StringBuilder(8192);
+        for (Map.Entry<Object, Object> e : sps.entrySet()) {
+            Object k = e.getKey();
+            Object v = e.getValue();
+            if ((k != null) && (v != null)) {
+                if ((k instanceof String) && (v instanceof String)) {
+                    String ks = (String) k;
+                    String vs = (String) v;
+                    sb.append(ks);
+                    sb.append("=");
+                    sb.append(vs);
+                    sb.append("\n");
+                }
+            }
+        }
+        return sb.toString();
     }
 
     private static String getProperty(String property, String variable, String value) {

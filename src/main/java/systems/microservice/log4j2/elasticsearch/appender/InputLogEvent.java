@@ -30,6 +30,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.SecureRandom;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -43,6 +44,78 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
     public final long timestamp;
 
+    public InputLogEvent(boolean start) {
+        super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
+
+        this.timestamp = start ? ElasticSearchAppender.START : System.currentTimeMillis();
+        this.docAsUpsert(true);
+
+        try {
+            Thread t = Thread.currentThread();
+            XContentBuilder cb = XContentFactory.smileBuilder(new ByteArrayOutputStream(8192));
+            cb.startObject();
+            cb.timeField("timestamp", "time", timestamp);
+            cb.timeField("start.timestamp", "start.time", ElasticSearchAppender.START);
+            if (start) {
+                cb.field("start", true);
+            } else {
+                cb.timeField("finish.timestamp", "finish.time", timestamp);
+                cb.field("finish", true);
+            }
+            cb.field("process", ElasticSearchAppender.PROCESS);
+            for (Map.Entry<String, String> e : ElasticSearchAppender.LOGTAGS.entrySet()) {
+                cb.field(e.getKey(), e.getValue());
+            }
+            cb.field("host.name", ElasticSearchAppender.HOST_NAME);
+            cb.field("host.ip", ElasticSearchAppender.HOST_IP);
+            cb.field("logger", ElasticSearchAppender.class.getName());
+            cb.field("thread.id", t.getId());
+            addField(cb, "thread.name", t.getName(), 256);
+            cb.field("thread.priority", t.getPriority());
+            cb.field("level", "CONTROL");
+            cb.field("message", "Hello World!");
+            cb.endObject();
+            this.doc(cb);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public InputLogEvent(long lost, long lostSince, long lostTo) {
+        super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
+
+        this.timestamp = System.currentTimeMillis();
+        this.docAsUpsert(true);
+
+        try {
+            Thread t = Thread.currentThread();
+            XContentBuilder cb = XContentFactory.smileBuilder(new ByteArrayOutputStream(256));
+            cb.startObject();
+            cb.timeField("timestamp", "time", timestamp);
+            cb.timeField("start.timestamp", "start.time", ElasticSearchAppender.START);
+            cb.field("process", ElasticSearchAppender.PROCESS);
+            for (Map.Entry<String, String> e : ElasticSearchAppender.LOGTAGS.entrySet()) {
+                cb.field(e.getKey(), e.getValue());
+            }
+            cb.field("host.name", ElasticSearchAppender.HOST_NAME);
+            cb.field("host.ip", ElasticSearchAppender.HOST_IP);
+            cb.field("logger", ElasticSearchAppender.class.getName());
+            cb.field("thread.id", t.getId());
+            addField(cb, "thread.name", t.getName(), 256);
+            cb.field("thread.priority", t.getPriority());
+            cb.field("level", "CONTROL");
+            cb.field("message", String.format("Lost %d events", lost));
+            cb.field("event.lost", true);
+            cb.field("event.lost.count", lost);
+            cb.timeField("event.lost.since.timestamp", "event.lost.since.time", lostSince);
+            cb.timeField("event.lost.to.timestamp", "event.lost.to.time", lostTo);
+            cb.endObject();
+            this.doc(cb);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public InputLogEvent(LogEvent event, int length) {
         super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
 
@@ -54,13 +127,21 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.startObject();
             cb.timeField("timestamp", "time", timestamp);
             cb.timeField("start.timestamp", "start.time", ElasticSearchAppender.START);
+            cb.field("process", ElasticSearchAppender.PROCESS);
+            for (Map.Entry<String, String> e : ElasticSearchAppender.LOGTAGS.entrySet()) {
+                cb.field(e.getKey(), e.getValue());
+            }
+            cb.field("host.name", ElasticSearchAppender.HOST_NAME);
+            cb.field("host.ip", ElasticSearchAppender.HOST_IP);
             addField(cb, "logger", event.getLoggerFqcn(), 256);
-            cb.field("thread_id", event.getThreadId());
-            addField(cb, "thread_name", event.getThreadName(), 256);
-            cb.field("thread_priority", event.getThreadPriority());
+            cb.field("thread.id", event.getThreadId());
+            addField(cb, "thread.name", event.getThreadName(), 256);
+            cb.field("thread.priority", event.getThreadPriority());
             Level l = event.getLevel();
             if (l != null) {
                 addField(cb, "level", l.toString(), 32);
+            } else {
+                cb.field("level", "UNKNOWN");
             }
             Message m = event.getMessage();
             if (m != null) {
@@ -117,34 +198,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                 }
             }
             cb.endObject();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public InputLogEvent(long lost, long lostSince, long lostTo) {
-        super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
-
-        this.timestamp = System.currentTimeMillis();
-        this.docAsUpsert(true);
-
-        try {
-            Thread t = Thread.currentThread();
-            XContentBuilder cb = XContentFactory.smileBuilder(new ByteArrayOutputStream(256));
-            cb.startObject();
-            cb.timeField("timestamp", "time", timestamp);
-            cb.timeField("start.timestamp", "start.time", ElasticSearchAppender.START);
-            cb.field("logger", ElasticSearchAppender.class.getName());
-            cb.field("thread_id", t.getId());
-            cb.field("thread_name", t.getName());
-            cb.field("thread_priority", t.getPriority());
-            cb.field("level", "EVENT");
-            cb.field("message", String.format("Lost %d events", lost));
-            cb.field("event.lost", true);
-            cb.field("event.lost.count", lost);
-            cb.timeField("event.lost.since.timestamp", "event.lost.since.time", lostSince);
-            cb.timeField("event.lost.to.timestamp", "event.lost.to.time", lostTo);
-            cb.endObject();
+            this.doc(cb);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -162,7 +216,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
     }
 
     private static void addField(XContentBuilder builder, String name, String value, int length) {
-        if (value != null) {
+        if ((name != null) && (value != null)) {
             try {
                 builder.field(name, Util.cut(value, length));
             } catch (IOException e) {
