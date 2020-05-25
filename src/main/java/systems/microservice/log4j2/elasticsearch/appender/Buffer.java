@@ -33,13 +33,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.0
  */
 final class Buffer {
-    public static final int BULK_RETRIES = 10;
-    public static final long BULK_RETRIES_SPAN = 3000L;
+    public static final int BULK_RETRIES = 5;
+    public static final long BULK_RETRIES_SPAN = 5000L;
     public static final int BULK_MAX_COUNT = 10000;
     public static final long BULK_MAX_SIZE = 1048576L;
 
-    private final AtomicBoolean ready = new AtomicBoolean(true);
-    private final AtomicInteger threads = new AtomicInteger(0);
+    private final ThreadSection section = new ThreadSection(true);
     private final AtomicInteger size = new AtomicInteger(0);
     private final int capacity;
     private final ConcurrentLinkedQueue<InputLogEvent> eventsQueue;
@@ -52,30 +51,21 @@ final class Buffer {
     }
 
     public boolean isReady() {
-        return ready.get();
+        return section.isEnabled();
     }
 
-    public boolean append(InputLogEvent event, FlushWait flushWait) {
-        if (ready.get()) {
-            threads.incrementAndGet();
+    public boolean append(InputLogEvent event, Thread flushThread) {
+        if (section.enter()) {
             try {
-                if (ready.get()) {
-                    if (size.get() < capacity) {
-                        int s = size.getAndIncrement();
-                        if (s < capacity) {
-                            eventsQueue.offer(event);
-                            if (s + 1 == capacity) {
-                                flushWait.signalAll(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        ready.set(false);
-                                    }
-                                });
-                            }
-                            return true;
-                        } else {
-                            return false;
+                if (size.get() < capacity) {
+                    int s = size.getAndIncrement();
+                    if (s < capacity) {
+                        eventsQueue.offer(event);
+                        if (s + 1 == capacity) {
+                            section.disable();
+                            flushThread.interrupt();
                         }
+                        return true;
                     } else {
                         return false;
                     }
@@ -83,7 +73,7 @@ final class Buffer {
                     return false;
                 }
             } finally {
-                threads.decrementAndGet();
+                section.leave();
             }
         } else {
             return false;
@@ -91,36 +81,52 @@ final class Buffer {
     }
 
     public void flush(RestHighLevelClient client, String group, AtomicLong lost, AtomicLong lostSince) {
-        ready.set(false);
+        section.disable();
         try {
-            while (threads.get() > 0) {
-                try {
-                    Thread.sleep(500L);
-                } catch (InterruptedException e) {
-                }
-            }
+            section.await(500L);
             if (size.get() > 0) {
                 try {
                     for (InputLogEvent e : eventsQueue) {
                         eventsList.add(e);
                     }
-                    long l = lost.getAndSet(0L);
+                    InputLogEvent le = null;
+                    long l = lost.get();
                     if (l > 0L) {
-                        InputLogEvent e = new InputLogEvent(l, lostSince.get(), System.currentTimeMillis());
-                        eventsList.add(e);
+                        le = new InputLogEvent(l, lostSince.get(), System.currentTimeMillis());
+                        eventsList.add(le);
                     }
                     Collections.sort(eventsList);
+                    boolean lef = false;
                     BulkRequest r = new BulkRequest(group);
                     for (InputLogEvent e : eventsList) {
                         if ((r.numberOfActions() < BULK_MAX_COUNT) && (r.estimatedSizeInBytes() < BULK_MAX_SIZE)) {
                             r.add(e);
+                            if (e == le) {
+                                lef = true;
+                            }
                         } else {
-                            putEvents(client, group, lost, r);
+                            if (putEvents(client, group, r)) {
+                                if (lef) {
+                                    lost.addAndGet(-l);
+                                }
+                            } else {
+                                lost.addAndGet(r.numberOfActions());
+                            }
+                            lef = false;
                             r = new BulkRequest(group);
                             r.add(e);
+                            if (e == le) {
+                                lef = true;
+                            }
                         }
                     }
-                    putEvents(client, group, lost, r);
+                    if (putEvents(client, group, r)) {
+                        if (lef) {
+                            lost.addAndGet(-l);
+                        }
+                    } else {
+                        lost.addAndGet(r.numberOfActions());
+                    }
                 } finally {
                     eventsList.clear();
                     eventsQueue.clear();
@@ -128,29 +134,26 @@ final class Buffer {
                 }
             }
         } finally {
-            ready.set(true);
+            section.enable();
         }
     }
 
-    private void putEvents(RestHighLevelClient client, String group, AtomicLong lost, BulkRequest request) {
-        int c = request.numberOfActions();
-        if (c > 0) {
-            int i = 0;
-            for (; i < BULK_RETRIES; ++i) {
+    private boolean putEvents(RestHighLevelClient client, String group, BulkRequest request) {
+        if (request.numberOfActions() > 0) {
+            for (int i = 0; i < BULK_RETRIES; ++i) {
                 try {
                     client.bulk(request, RequestOptions.DEFAULT);
+                    return true;
                 } catch (Exception e) {
-                    try {
-                        Thread.sleep(BULK_RETRIES_SPAN);
-                    } catch (InterruptedException ex) {
-                    }
-                    continue;
                 }
-                break;
+                try {
+                    Thread.sleep(BULK_RETRIES_SPAN);
+                } catch (InterruptedException ex) {
+                }
             }
-            if (i >= BULK_RETRIES) {
-                lost.addAndGet(c);
-            }
+            return false;
+        } else {
+            return true;
         }
     }
 }

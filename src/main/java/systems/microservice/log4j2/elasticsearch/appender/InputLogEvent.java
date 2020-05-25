@@ -72,7 +72,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("thread.id", t.getId());
             addField(cb, "thread.name", t.getName(), 256);
             cb.field("thread.priority", t.getPriority());
-            cb.field("level", "CONTROL");
+            cb.field("level", "INFO");
             cb.field("message", "Hello World!");
             cb.field("variables", ElasticSearchAppender.VARIABLES);
             cb.field("properties", ElasticSearchAppender.PROPERTIES);
@@ -105,12 +105,12 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("thread.id", t.getId());
             addField(cb, "thread.name", t.getName(), 256);
             cb.field("thread.priority", t.getPriority());
-            cb.field("level", "CONTROL");
+            cb.field("level", "INFO");
             cb.field("message", String.format("Lost %d events", lost));
-            cb.field("event.lost", true);
-            cb.field("event.lost.count", lost);
-            cb.timeField("event.lost.since.timestamp", "event.lost.since.time", lostSince);
-            cb.timeField("event.lost.to.timestamp", "event.lost.to.time", lostTo);
+            cb.field("lost", true);
+            cb.field("lost.count", lost);
+            cb.timeField("lost.since.timestamp", "lost.since.time", lostSince);
+            cb.timeField("lost.to.timestamp", "lost.to.time", lostTo);
             cb.endObject();
             this.doc(cb);
         } catch (IOException e) {
@@ -143,7 +143,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             if (l != null) {
                 addField(cb, "level", l.toString(), 32);
             } else {
-                cb.field("level", "UNKNOWN");
+                cb.field("level", "INFO");
             }
             Message m = event.getMessage();
             if (m != null) {
