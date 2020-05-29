@@ -24,7 +24,6 @@ import org.elasticsearch.client.RestHighLevelClient;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,56 +34,57 @@ import java.util.concurrent.atomic.AtomicLong;
 final class Buffer {
     public static final int BULK_RETRIES = 5;
     public static final long BULK_RETRIES_SPAN = 5000L;
-    public static final int BULK_MAX_COUNT = 10000;
-    public static final long BULK_MAX_SIZE = 1048576L;
+    public static final int BULK_COUNT_MAX = 10000;
+    public static final long BULK_SIZE_MAX = 1048576L;
 
     private final ThreadSection section = new ThreadSection(true);
-    private final AtomicInteger size = new AtomicInteger(0);
-    private final int capacity;
+    private final AtomicInteger count = new AtomicInteger(0);
+    private final AtomicLong size = new AtomicLong(0L);
+    private final int countMax;
+    private final long sizeMax;
     private final ConcurrentLinkedQueue<InputLogEvent> eventsQueue;
     private final ArrayList<InputLogEvent> eventsList;
 
-    public Buffer(int capacity) {
-        this.capacity = capacity;
+    public Buffer(int countMax, long sizeMax) {
+        this.countMax = countMax;
+        this.sizeMax = sizeMax;
         this.eventsQueue = new ConcurrentLinkedQueue<>();
-        this.eventsList = new ArrayList<>(capacity + 1);
+        this.eventsList = new ArrayList<>(countMax + 1);
     }
 
     public boolean isReady() {
         return section.isEnabled();
     }
 
-    public boolean append(InputLogEvent event, Thread flushThread) {
+    public boolean append(InputLogEvent event) {
         if (section.enter()) {
             try {
-                if (size.get() < capacity) {
-                    int s = size.getAndIncrement();
-                    if (s < capacity) {
-                        eventsQueue.offer(event);
-                        if (s + 1 == capacity) {
-                            section.disable();
-                            flushThread.interrupt();
+                if (count.get() + 1 < countMax) {
+                    long es = event.estimatedSizeInBytes();
+                    if (size.get() + es < sizeMax) {
+                        int c = count.incrementAndGet();
+                        if (c < countMax) {
+                            long s = size.addAndGet(es);
+                            if (s < sizeMax) {
+                                eventsQueue.offer(event);
+                                return true;
+                            }
                         }
-                        return true;
-                    } else {
-                        return false;
                     }
-                } else {
-                    return false;
                 }
             } finally {
                 section.leave();
             }
-        } else {
-            return false;
+            section.disable();
         }
+        return false;
     }
 
     public void flush(RestHighLevelClient client, String group, AtomicLong lost, AtomicLong lostSince) {
         section.disable();
         try {
             section.await(500L);
-            if (size.get() > 0) {
+            if (count.get() > 0) {
                 try {
                     for (InputLogEvent e : eventsQueue) {
                         eventsList.add(e);
@@ -99,7 +99,7 @@ final class Buffer {
                     boolean lef = false;
                     BulkRequest r = new BulkRequest(group);
                     for (InputLogEvent e : eventsList) {
-                        if ((r.numberOfActions() < BULK_MAX_COUNT) && (r.estimatedSizeInBytes() < BULK_MAX_SIZE)) {
+                        if ((r.numberOfActions() < BULK_COUNT_MAX) && (r.estimatedSizeInBytes() < BULK_SIZE_MAX)) {
                             r.add(e);
                             if (e == le) {
                                 lef = true;
@@ -130,7 +130,7 @@ final class Buffer {
                 } finally {
                     eventsList.clear();
                     eventsQueue.clear();
-                    size.set(0);
+                    count.set(0);
                 }
             }
         } finally {

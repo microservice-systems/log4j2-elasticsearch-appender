@@ -61,7 +61,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
     private final AtomicLong lostSince = new AtomicLong(System.currentTimeMillis());
     private final RestHighLevelClient client;
     private final String group;
-    private final int capacity;
+    private final int countMax;
+    private final long sizeMax;
     private final Buffer buffer1;
     private final Buffer buffer2;
     private final int length;
@@ -71,7 +72,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
     public ElasticSearchAppender(String name,
                                  String url,
                                  String group,
-                                 int capacity,
+                                 int countMax,
+                                 long sizeMax,
                                  int length,
                                  long span,
                                  Filter filter,
@@ -81,9 +83,10 @@ public final class ElasticSearchAppender extends AbstractAppender {
         if (group != null) {
             this.client = createClient(url);
             this.group = group;
-            this.capacity = capacity;
-            this.buffer1 = new Buffer(capacity);
-            this.buffer2 = new Buffer(capacity);
+            this.countMax = countMax;
+            this.sizeMax = sizeMax;
+            this.buffer1 = new Buffer(countMax, sizeMax);
+            this.buffer2 = new Buffer(countMax, sizeMax);
             this.length = length;
             this.span = span * 1000L;
             this.flushThread = new Thread(String.format("log4j2-elasticsearch-appender-flush-%s", name)) {
@@ -144,7 +147,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
         } else {
             this.group = null;
             this.client = null;
-            this.capacity = 0;
+            this.countMax = 0;
+            this.sizeMax = 0L;
             this.buffer1 = null;
             this.buffer2 = null;
             this.length = 0;
@@ -161,8 +165,12 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return group;
     }
 
-    public int getCapacity() {
-        return capacity;
+    public int getCountMax() {
+        return countMax;
+    }
+
+    public long getSizeMax() {
+        return sizeMax;
     }
 
     public int getLength() {
@@ -205,14 +213,14 @@ public final class ElasticSearchAppender extends AbstractAppender {
 
     private void append(InputLogEvent event) {
         if (flag.get()) {
-            if (!buffer1.append(event, flushThread)) {
-                if (!buffer2.append(event, flushThread)) {
+            if (!buffer1.append(event)) {
+                if (!buffer2.append(event)) {
                     lost.incrementAndGet();
                 }
             }
         } else {
-            if (!buffer2.append(event, flushThread)) {
-                if (!buffer1.append(event, flushThread)) {
+            if (!buffer2.append(event)) {
+                if (!buffer1.append(event)) {
                     lost.incrementAndGet();
                 }
             }
@@ -223,7 +231,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
     public static ElasticSearchAppender createAppender(@PluginAttribute("name") String name,
                                                        @PluginAttribute("url") String url,
                                                        @PluginAttribute("group") String group,
-                                                       @PluginAttribute("capacity") String capacity,
+                                                       @PluginAttribute("countMax") String countMax,
+                                                       @PluginAttribute("sizeMax") String sizeMax,
                                                        @PluginAttribute("length") String length,
                                                        @PluginAttribute("span") String span,
                                                        @PluginElement("Filter") Filter filter,
@@ -231,7 +240,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return new ElasticSearchAppender((name != null) ? name : "elasticsearch",
                                          getProperty("log4j2.elasticsearch.url", "LOG4J2_ELASTICSEARCH_URL", url, null),
                                          getProperty("log4j2.elasticsearch.group", "LOG4J2_ELASTICSEARCH_GROUP", group, null),
-                                         Integer.parseInt(getProperty("log4j2.elasticsearch.capacity", "LOG4J2_ELASTICSEARCH_CAPACITY", capacity, "10000")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.count.max", "LOG4J2_ELASTICSEARCH_COUNT_MAX", countMax, "10000")),
+                                         Long.parseLong(getProperty("log4j2.elasticsearch.size.max", "LOG4J2_ELASTICSEARCH_SIZE_MAX", sizeMax, "5242880")),
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.length", "LOG4J2_ELASTICSEARCH_LENGTH", length, "4096")),
                                          Long.parseLong(getProperty("log4j2.elasticsearch.span", "LOG4J2_ELASTICSEARCH_SPAN", span, "60")),
                                          filter,

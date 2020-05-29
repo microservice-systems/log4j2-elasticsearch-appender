@@ -206,6 +206,20 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         }
     }
 
+    public long estimatedSizeInBytes() {
+        long s = 0L;
+        if (doc() != null) {
+            s += doc().source().length();
+        }
+        if (upsertRequest() != null) {
+            s += upsertRequest().source().length();
+        }
+        if (script() != null) {
+            s += script().getIdOrCode().length() * 2;
+        }
+        return s;
+    }
+
     @Override
     public int compareTo(InputLogEvent event) {
         if (timestamp < event.timestamp) {
