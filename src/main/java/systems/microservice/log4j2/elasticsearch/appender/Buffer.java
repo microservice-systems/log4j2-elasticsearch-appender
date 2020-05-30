@@ -80,7 +80,7 @@ final class Buffer {
         return false;
     }
 
-    public void flush(RestHighLevelClient client, String url, String group, AtomicLong lost, AtomicLong lostSince) {
+    public void flush(RestHighLevelClient client, String url, String index, AtomicLong lost, AtomicLong lostSince) {
         section.disable();
         try {
             section.await(500L);
@@ -96,16 +96,21 @@ final class Buffer {
                         eventsList.add(le);
                     }
                     Collections.sort(eventsList);
+                    Index idx = null;
                     boolean lef = false;
-                    BulkRequest r = new BulkRequest(group);
+                    BulkRequest r = new BulkRequest(null);
                     for (InputLogEvent e : eventsList) {
+                        if ((idx == null) || !idx.contains(e)) {
+                            idx = new Index(index, e);
+                        }
+                        e.index(idx.name);
                         if ((r.numberOfActions() < BULK_COUNT_MAX) && (r.estimatedSizeInBytes() < BULK_SIZE_MAX)) {
                             r.add(e);
                             if (e == le) {
                                 lef = true;
                             }
                         } else {
-                            if (putEvents(client, url, group, r)) {
+                            if (putEvents(client, url, index, r)) {
                                 if (lef) {
                                     lost.addAndGet(-l);
                                 }
@@ -113,14 +118,14 @@ final class Buffer {
                                 lost.addAndGet(r.numberOfActions());
                             }
                             lef = false;
-                            r = new BulkRequest(group);
+                            r = new BulkRequest(index);
                             r.add(e);
                             if (e == le) {
                                 lef = true;
                             }
                         }
                     }
-                    if (putEvents(client, url, group, r)) {
+                    if (putEvents(client, url, index, r)) {
                         if (lef) {
                             lost.addAndGet(-l);
                         }
@@ -138,14 +143,15 @@ final class Buffer {
         }
     }
 
-    private boolean putEvents(RestHighLevelClient client, String url, String group, BulkRequest request) {
-        if (request.numberOfActions() > 0) {
+    private boolean putEvents(RestHighLevelClient client, String url, String index, BulkRequest request) {
+        int c = request.numberOfActions();
+        if (c > 0) {
             for (int i = 0; i < BULK_RETRIES; ++i) {
                 try {
                     client.bulk(request, RequestOptions.DEFAULT);
                     return true;
                 } catch (Exception e) {
-                    ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put events to ElasticSearch (%s) is failed: %s", i, url, e.getMessage()));
+                    ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) is failed: %s", i, c, url, index, e.getMessage()));
                 }
                 try {
                     Thread.sleep(BULK_RETRIES_SPAN);
