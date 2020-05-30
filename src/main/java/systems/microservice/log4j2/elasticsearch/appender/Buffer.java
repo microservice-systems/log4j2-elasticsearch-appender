@@ -80,7 +80,7 @@ final class Buffer {
         return false;
     }
 
-    public void flush(RestHighLevelClient client, String group, AtomicLong lost, AtomicLong lostSince) {
+    public void flush(RestHighLevelClient client, String url, String group, AtomicLong lost, AtomicLong lostSince) {
         section.disable();
         try {
             section.await(500L);
@@ -105,7 +105,7 @@ final class Buffer {
                                 lef = true;
                             }
                         } else {
-                            if (putEvents(client, group, r)) {
+                            if (putEvents(client, url, group, r)) {
                                 if (lef) {
                                     lost.addAndGet(-l);
                                 }
@@ -120,7 +120,7 @@ final class Buffer {
                             }
                         }
                     }
-                    if (putEvents(client, group, r)) {
+                    if (putEvents(client, url, group, r)) {
                         if (lef) {
                             lost.addAndGet(-l);
                         }
@@ -138,13 +138,14 @@ final class Buffer {
         }
     }
 
-    private boolean putEvents(RestHighLevelClient client, String group, BulkRequest request) {
+    private boolean putEvents(RestHighLevelClient client, String url, String group, BulkRequest request) {
         if (request.numberOfActions() > 0) {
             for (int i = 0; i < BULK_RETRIES; ++i) {
                 try {
                     client.bulk(request, RequestOptions.DEFAULT);
                     return true;
                 } catch (Exception e) {
+                    ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put events to ElasticSearch (%s) is failed: %s", i, url, e.getMessage()));
                 }
                 try {
                     Thread.sleep(BULK_RETRIES_SPAN);

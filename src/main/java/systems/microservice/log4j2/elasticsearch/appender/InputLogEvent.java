@@ -118,7 +118,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         }
     }
 
-    public InputLogEvent(LogEvent event, int length) {
+    public InputLogEvent(LogEvent event, int lengthMax) {
         super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
 
         this.timestamp = event.getTimeMillis();
@@ -147,7 +147,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             }
             Message m = event.getMessage();
             if (m != null) {
-                addField(cb, "message", m.getFormattedMessage(), length);
+                addField(cb, "message", m.getFormattedMessage(), lengthMax);
             }
             StackTraceElement ste = event.getSource();
             if (ste != null) {
@@ -161,10 +161,10 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             if (ex != null) {
                 cb.field("exception", true);
                 addField(cb, "exception.class", ex.getClass().getName(), 256);
-                addField(cb, "exception.message", ex.getMessage(), length);
+                addField(cb, "exception.message", ex.getMessage(), lengthMax);
                 try (StringBuilderWriter sbw = new StringBuilderWriter(1024)) {
                     ex.printStackTrace(new PrintWriter(sbw, false));
-                    addField(cb, "exception.stacktrace", sbw.toString(), length);
+                    addField(cb, "exception.stacktrace", sbw.toString(), lengthMax);
                 }
                 Throwable[] sex = ex.getSuppressed();
                 if (sex != null) {
@@ -175,7 +175,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                 if (cex != null) {
                     cb.field("exception.cause", true);
                     addField(cb, "exception.cause.class", cex.getClass().getName(), 256);
-                    addField(cb, "exception.cause.message", cex.getMessage(), length);
+                    addField(cb, "exception.cause.message", cex.getMessage(), lengthMax);
                 }
             }
             Marker mrk = event.getMarker();
@@ -196,7 +196,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                 } catch (Exception e) {
                     cb.field("ctx.exception", true);
                     addField(cb, "ctx.exception.class", e.getClass().getName(), 256);
-                    addField(cb, "ctx.exception.message", e.getMessage(), length);
+                    addField(cb, "ctx.exception.message", e.getMessage(), lengthMax);
                 }
             }
             cb.endObject();
@@ -231,10 +231,10 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         }
     }
 
-    private static void addField(XContentBuilder builder, String name, String value, int length) {
+    private static void addField(XContentBuilder builder, String name, String value, int lengthMax) {
         if ((name != null) && (value != null)) {
             try {
-                builder.field(name, Util.cut(value, length));
+                builder.field(name, Util.cut(value, lengthMax));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

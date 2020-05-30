@@ -30,12 +30,12 @@ public final class Util {
     private Util() {
     }
 
-    public static String cut(String value, int length) {
+    public static String cut(String value, int lengthMax) {
         if (value != null) {
-            if (value.length() <= length) {
+            if (value.length() <= lengthMax) {
                 return value;
             } else {
-                return value.substring(0, length);
+                return value.substring(0, lengthMax);
             }
         } else {
             return null;
