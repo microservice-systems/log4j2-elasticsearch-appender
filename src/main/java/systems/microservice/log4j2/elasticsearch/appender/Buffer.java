@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
 final class Buffer {
     public static final int BULK_RETRIES = 5;
     public static final long BULK_RETRIES_SPAN = 5000L;
-    public static final int BULK_COUNT_MAX = 10000;
+    public static final int BULK_COUNT_MAX = 4000;
     public static final long BULK_SIZE_MAX = 1048576L;
 
     private final ThreadSection section = new ThreadSection(true);
@@ -135,6 +135,7 @@ final class Buffer {
                 } finally {
                     eventsList.clear();
                     eventsQueue.clear();
+                    size.set(0L);
                     count.set(0);
                 }
             }

@@ -33,7 +33,7 @@ final class Index {
         long tb = createTimeBegin(event.timestamp);
 
         this.prefix = prefix;
-        this.name = String.format("%s-%s", prefix, String.format("%1$tY-%1$tm-%1$td", tb));
+        this.name = String.format("%s-%s", prefix, String.format("%1$tY.%1$tm.%1$td", tb));
         this.timeBegin = tb;
         this.timeEnd = tb + DAY_MILLIS;
     }

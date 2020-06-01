@@ -97,6 +97,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     Runtime.getRuntime().addShutdownHook(new Thread(String.format("log4j2-elasticsearch-appender-shutdown-%s", name)) {
                         @Override
                         public void run() {
+                            final AtomicBoolean enabled = ElasticSearchAppender.this.enabled;
+                            final Thread flushThread = ElasticSearchAppender.this.flushThread;
                             enabled.set(false);
                             flushThread.interrupt();
                             try {
@@ -105,21 +107,31 @@ public final class ElasticSearchAppender extends AbstractAppender {
                             }
                         }
                     });
+                    final AtomicBoolean enabled = ElasticSearchAppender.this.enabled;
+                    final AtomicBoolean flag = ElasticSearchAppender.this.flag;
+                    final AtomicLong lost = ElasticSearchAppender.this.lost;
+                    final AtomicLong lostSince = ElasticSearchAppender.this.lostSince;
+                    final String url = ElasticSearchAppender.this.url;
+                    final String index = ElasticSearchAppender.this.index;
+                    final long spanMax = ElasticSearchAppender.this.spanMax;
+                    final RestHighLevelClient client = ElasticSearchAppender.this.client;
+                    final Buffer buffer1 = ElasticSearchAppender.this.buffer1;
+                    final Buffer buffer2 = ElasticSearchAppender.this.buffer2;
                     long pt = System.currentTimeMillis();
                     while (enabled.get()) {
                         long t = System.currentTimeMillis();
-                        if (t >= pt + ElasticSearchAppender.this.spanMax) {
+                        if (t >= pt + spanMax) {
                             if (flag.get()) {
                                 try {
                                     flag.set(false);
-                                    buffer1.flush(client, url, ElasticSearchAppender.this.index, lost, lostSince);
+                                    buffer1.flush(client, url, index, lost, lostSince);
                                 } catch (Throwable e) {
                                     ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                                 }
                             } else {
                                 try {
                                     flag.set(true);
-                                    buffer2.flush(client, url, ElasticSearchAppender.this.index, lost, lostSince);
+                                    buffer2.flush(client, url, index, lost, lostSince);
                                 } catch (Throwable e) {
                                     ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                                 }
@@ -129,7 +141,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                         if (!buffer1.isReady()) {
                             try {
                                 flag.set(false);
-                                buffer1.flush(client, url, ElasticSearchAppender.this.index, lost, lostSince);
+                                buffer1.flush(client, url, index, lost, lostSince);
                             } catch (Throwable e) {
                                 ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                             }
@@ -137,7 +149,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                         if (!buffer2.isReady()) {
                             try {
                                 flag.set(true);
-                                buffer2.flush(client, url, ElasticSearchAppender.this.index, lost, lostSince);
+                                buffer2.flush(client, url, index, lost, lostSince);
                             } catch (Throwable e) {
                                 ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                             }
@@ -154,13 +166,13 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     }
                     try {
                         flag.set(false);
-                        buffer1.flush(client, url, ElasticSearchAppender.this.index, lost, lostSince);
+                        buffer1.flush(client, url, index, lost, lostSince);
                     } catch (Throwable e) {
                         ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                     }
                     try {
                         flag.set(true);
-                        buffer2.flush(client, url, ElasticSearchAppender.this.index, lost, lostSince);
+                        buffer2.flush(client, url, index, lost, lostSince);
                     } catch (Throwable e) {
                         ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                     }
@@ -264,7 +276,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return new ElasticSearchAppender((name != null) ? name : "elasticsearch",
                                          getProperty("log4j2.elasticsearch.url", "LOG4J2_ELASTICSEARCH_URL", url, null),
                                          getProperty("log4j2.elasticsearch.index", "LOG4J2_ELASTICSEARCH_INDEX", index, null),
-                                         Integer.parseInt(getProperty("log4j2.elasticsearch.count.max", "LOG4J2_ELASTICSEARCH_COUNT_MAX", countMax, "20000")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.count.max", "LOG4J2_ELASTICSEARCH_COUNT_MAX", countMax, "10000")),
                                          Long.parseLong(getProperty("log4j2.elasticsearch.size.max", "LOG4J2_ELASTICSEARCH_SIZE_MAX", sizeMax, "5242880")),
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.length.max", "LOG4J2_ELASTICSEARCH_LENGTH_MAX", lengthMax, "4096")),
                                          Long.parseLong(getProperty("log4j2.elasticsearch.span.max", "LOG4J2_ELASTICSEARCH_SPAN_MAX", spanMax, "60")),
