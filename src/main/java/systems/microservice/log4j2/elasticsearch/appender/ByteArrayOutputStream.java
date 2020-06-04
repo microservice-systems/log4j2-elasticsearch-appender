@@ -32,8 +32,8 @@ import java.util.Arrays;
 final class ByteArrayOutputStream extends BytesStream {
     private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
-    protected byte buf[];
-    protected int count;
+    private byte buf[];
+    private int count;
 
     public ByteArrayOutputStream(int size) {
         if (size < 0) {

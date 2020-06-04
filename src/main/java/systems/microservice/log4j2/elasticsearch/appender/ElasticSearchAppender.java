@@ -57,7 +57,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
 
     private final AtomicBoolean enabled = new AtomicBoolean(false);
     private final AtomicBoolean flag = new AtomicBoolean(true);
-    private final AtomicLong lost = new AtomicLong(0L);
+    private final AtomicLong totalCount = new AtomicLong(0L);
+    private final AtomicLong totalSize = new AtomicLong(0L);
+    private final AtomicLong lostCount = new AtomicLong(0L);
     private final AtomicLong lostSinceTime = new AtomicLong(System.currentTimeMillis());
     private final String url;
     private final String index;
@@ -109,8 +111,10 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     });
                     final AtomicBoolean enabled = ElasticSearchAppender.this.enabled;
                     final AtomicBoolean flag = ElasticSearchAppender.this.flag;
-                    final AtomicLong lost = ElasticSearchAppender.this.lost;
-                    final AtomicLong lostSince = ElasticSearchAppender.this.lostSinceTime;
+                    final AtomicLong totalCount = ElasticSearchAppender.this.totalCount;
+                    final AtomicLong totalSize = ElasticSearchAppender.this.totalSize;
+                    final AtomicLong lostCount = ElasticSearchAppender.this.lostCount;
+                    final AtomicLong lostSinceTime = ElasticSearchAppender.this.lostSinceTime;
                     final String url = ElasticSearchAppender.this.url;
                     final String index = ElasticSearchAppender.this.index;
                     final long spanMax = ElasticSearchAppender.this.spanMax;
@@ -124,14 +128,14 @@ public final class ElasticSearchAppender extends AbstractAppender {
                             if (flag.get()) {
                                 try {
                                     flag.set(false);
-                                    buffer1.flush(client, url, index, lost, lostSince);
+                                    buffer1.flush(client, url, index, lostCount, lostSinceTime);
                                 } catch (Throwable e) {
                                     ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                                 }
                             } else {
                                 try {
                                     flag.set(true);
-                                    buffer2.flush(client, url, index, lost, lostSince);
+                                    buffer2.flush(client, url, index, lostCount, lostSinceTime);
                                 } catch (Throwable e) {
                                     ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                                 }
@@ -141,7 +145,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                         if (!buffer1.isReady()) {
                             try {
                                 flag.set(false);
-                                buffer1.flush(client, url, index, lost, lostSince);
+                                buffer1.flush(client, url, index, lostCount, lostSinceTime);
                             } catch (Throwable e) {
                                 ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                             }
@@ -149,7 +153,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                         if (!buffer2.isReady()) {
                             try {
                                 flag.set(true);
-                                buffer2.flush(client, url, index, lost, lostSince);
+                                buffer2.flush(client, url, index, lostCount, lostSinceTime);
                             } catch (Throwable e) {
                                 ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                             }
@@ -166,13 +170,13 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     }
                     try {
                         flag.set(false);
-                        buffer1.flush(client, url, index, lost, lostSince);
+                        buffer1.flush(client, url, index, lostCount, lostSinceTime);
                     } catch (Throwable e) {
                         ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                     }
                     try {
                         flag.set(true);
-                        buffer2.flush(client, url, index, lost, lostSince);
+                        buffer2.flush(client, url, index, lostCount, lostSinceTime);
                     } catch (Throwable e) {
                         ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                     }
@@ -248,16 +252,18 @@ public final class ElasticSearchAppender extends AbstractAppender {
     }
 
     private void append(InputLogEvent event) {
+        totalCount.incrementAndGet();
+        totalSize.addAndGet(event.size);
         if (flag.get()) {
             if (!buffer1.append(event)) {
                 if (!buffer2.append(event)) {
-                    lost.incrementAndGet();
+                    lostCount.incrementAndGet();
                 }
             }
         } else {
             if (!buffer2.append(event)) {
                 if (!buffer1.append(event)) {
-                    lost.incrementAndGet();
+                    lostCount.incrementAndGet();
                 }
             }
         }

@@ -65,7 +65,7 @@ final class Buffer {
         if (section.enter()) {
             try {
                 if (count.get() + 1 < countMax) {
-                    long es = event.estimatedSizeInBytes();
+                    long es = event.size;
                     if (size.get() + es < sizeMax) {
                         int c = count.incrementAndGet();
                         if (c < countMax) {
@@ -85,7 +85,7 @@ final class Buffer {
         return false;
     }
 
-    public void flush(RestHighLevelClient client, String url, String index, AtomicLong lost, AtomicLong lostSinceTime) {
+    public void flush(RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSinceTime) {
         section.disable();
         try {
             section.await(100L);
@@ -95,7 +95,7 @@ final class Buffer {
                         eventsList.add(e);
                     }
                     InputLogEvent le = null;
-                    long l = lost.get();
+                    long l = lostCount.get();
                     if (l > 0L) {
                         le = new InputLogEvent(l, lostSinceTime.get(), System.currentTimeMillis());
                         eventsList.add(le);
@@ -118,10 +118,10 @@ final class Buffer {
                             int fc = putEvents(client, url, index, r);
                             if (fc == 0) {
                                 if (lef) {
-                                    lost.addAndGet(-l);
+                                    lostCount.addAndGet(-l);
                                 }
                             } else {
-                                lost.addAndGet(fc);
+                                lostCount.addAndGet(fc);
                             }
                             lef = false;
                             r = new BulkRequest(null);
@@ -134,10 +134,10 @@ final class Buffer {
                     int fc = putEvents(client, url, index, r);
                     if (fc == 0) {
                         if (lef) {
-                            lost.addAndGet(-l);
+                            lostCount.addAndGet(-l);
                         }
                     } else {
-                        lost.addAndGet(fc);
+                        lostCount.addAndGet(fc);
                     }
                 } finally {
                     eventsList.clear();

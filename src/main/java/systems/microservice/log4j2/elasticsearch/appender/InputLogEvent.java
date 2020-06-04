@@ -39,10 +39,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.0
  */
 final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEvent> {
+    private static final int SIZE_OVERHEAD = 32;
     private static final long mostSigBits = new SecureRandom().nextLong();
     private static final AtomicLong leastSigBits = new AtomicLong(0L);
 
     public final long time;
+    public final int size;
 
     public InputLogEvent(boolean start) {
         super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
@@ -52,7 +54,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Thread t = Thread.currentThread();
-            XContentBuilder cb = XContentFactory.smileBuilder(new ByteArrayOutputStream(131072));
+            ByteArrayOutputStream buf = new ByteArrayOutputStream(131072);
+            XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
             cb.timeField("time", time);
@@ -87,8 +90,10 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             } else {
                 cb.field("message", "Goodbye World!");
             }
-            cb.field("variables", ElasticSearchAppender.ENVIRONMENT_VARIABLES);
-            cb.field("properties", ElasticSearchAppender.SYSTEM_PROPERTIES);
+            cb.field("environment.variables", ElasticSearchAppender.ENVIRONMENT_VARIABLES);
+            cb.field("system.properties", ElasticSearchAppender.SYSTEM_PROPERTIES);
+            this.size = buf.size() + SIZE_OVERHEAD;
+            cb.field("size", size);
             cb.endObject();
             this.doc(cb);
         } catch (IOException e) {
@@ -96,7 +101,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         }
     }
 
-    public InputLogEvent(long lost, long lostSinceTime, long lostToTime) {
+    public InputLogEvent(long lostCount, long lostSinceTime, long lostToTime) {
         super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
 
         this.time = System.currentTimeMillis();
@@ -104,7 +109,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Thread t = Thread.currentThread();
-            XContentBuilder cb = XContentFactory.smileBuilder(new ByteArrayOutputStream(256));
+            ByteArrayOutputStream buf = new ByteArrayOutputStream(256);
+            XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
             cb.timeField("time", time);
@@ -121,10 +127,12 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             addField(cb, "thread.name", t.getName(), 256);
             cb.field("thread.priority", t.getPriority());
             cb.field("level", "INFO");
-            cb.field("message", String.format("Lost %d events", lost));
-            cb.field("lost.count", lost);
+            cb.field("message", String.format("Lost %d events", lostCount));
+            cb.field("lost.count", lostCount);
             cb.timeField("lost.since.time", lostSinceTime);
             cb.timeField("lost.to.time", lostToTime);
+            this.size = buf.size() + SIZE_OVERHEAD;
+            cb.field("size", size);
             cb.endObject();
             this.doc(cb);
         } catch (IOException e) {
@@ -140,7 +148,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Throwable ex = event.getThrown();
-            XContentBuilder cb = XContentFactory.smileBuilder(new ByteArrayOutputStream((ex == null) ? 512 : 1024));
+            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 512 : 1024);
+            XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
             cb.timeField("time", time);
@@ -208,25 +217,13 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                     addField(cb, "ctx.exception.message", e.getMessage(), lengthMax);
                 }
             }
+            this.size = buf.size() + SIZE_OVERHEAD;
+            cb.field("size", size);
             cb.endObject();
             this.doc(cb);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public long estimatedSizeInBytes() {
-        long s = 0L;
-        if (doc() != null) {
-            s += doc().source().length();
-        }
-        if (upsertRequest() != null) {
-            s += upsertRequest().source().length();
-        }
-        if (script() != null) {
-            s += script().getIdOrCode().length() * 2;
-        }
-        return s;
     }
 
     @Override
