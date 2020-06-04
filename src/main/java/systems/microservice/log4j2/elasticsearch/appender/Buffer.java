@@ -17,12 +17,17 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
+import org.elasticsearch.action.DocWriteRequest;
+import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,7 +40,7 @@ final class Buffer {
     public static final int BULK_RETRIES = 5;
     public static final long BULK_RETRIES_SPAN = 5000L;
     public static final int BULK_COUNT_MAX = 4000;
-    public static final long BULK_SIZE_MAX = 1048576L;
+    public static final long BULK_SIZE_MAX = 2097152L;
 
     private final ThreadSection section = new ThreadSection(true);
     private final AtomicInteger count = new AtomicInteger(0);
@@ -80,10 +85,10 @@ final class Buffer {
         return false;
     }
 
-    public void flush(RestHighLevelClient client, String url, String index, AtomicLong lost, AtomicLong lostSince) {
+    public void flush(RestHighLevelClient client, String url, String index, AtomicLong lost, AtomicLong lostSinceTime) {
         section.disable();
         try {
-            section.await(500L);
+            section.await(100L);
             if (count.get() > 0) {
                 try {
                     for (InputLogEvent e : eventsQueue) {
@@ -92,7 +97,7 @@ final class Buffer {
                     InputLogEvent le = null;
                     long l = lost.get();
                     if (l > 0L) {
-                        le = new InputLogEvent(l, lostSince.get(), System.currentTimeMillis());
+                        le = new InputLogEvent(l, lostSinceTime.get(), System.currentTimeMillis());
                         eventsList.add(le);
                     }
                     Collections.sort(eventsList);
@@ -110,27 +115,29 @@ final class Buffer {
                                 lef = true;
                             }
                         } else {
-                            if (putEvents(client, url, index, r)) {
+                            int fc = putEvents(client, url, index, r);
+                            if (fc == 0) {
                                 if (lef) {
                                     lost.addAndGet(-l);
                                 }
                             } else {
-                                lost.addAndGet(r.numberOfActions());
+                                lost.addAndGet(fc);
                             }
                             lef = false;
-                            r = new BulkRequest(index);
+                            r = new BulkRequest(null);
                             r.add(e);
                             if (e == le) {
                                 lef = true;
                             }
                         }
                     }
-                    if (putEvents(client, url, index, r)) {
+                    int fc = putEvents(client, url, index, r);
+                    if (fc == 0) {
                         if (lef) {
                             lost.addAndGet(-l);
                         }
                     } else {
-                        lost.addAndGet(r.numberOfActions());
+                        lost.addAndGet(fc);
                     }
                 } finally {
                     eventsList.clear();
@@ -144,24 +151,43 @@ final class Buffer {
         }
     }
 
-    private boolean putEvents(RestHighLevelClient client, String url, String index, BulkRequest request) {
-        int c = request.numberOfActions();
-        if (c > 0) {
-            for (int i = 0; i < BULK_RETRIES; ++i) {
-                try {
-                    client.bulk(request, RequestOptions.DEFAULT);
-                    return true;
-                } catch (Exception e) {
-                    ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) is failed: %s", i, c, url, index, e.getMessage()));
+    private int putEvents(RestHighLevelClient client, String url, String index, BulkRequest request) {
+        int fc = 0;
+        for (int i = 0; (request.numberOfActions() > 0) && (i < BULK_RETRIES); ++i) {
+            try {
+                BulkResponse rsp = client.bulk(request, RequestOptions.DEFAULT);
+                fc = 0;
+                BulkItemResponse[] irs = rsp.getItems();
+                for (BulkItemResponse ir : irs) {
+                    if (ir.isFailed()) {
+                        fc++;
+                    }
                 }
-                try {
-                    Thread.sleep(BULK_RETRIES_SPAN);
-                } catch (InterruptedException ex) {
+                if (fc == 0) {
+                    return 0;
+                } else {
+                    ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) contains %d failed events", i, request.numberOfActions(), url, index, fc));
+                    HashSet<String> fids = new HashSet<>(Math.max(fc, 16));
+                    for (BulkItemResponse ir : irs) {
+                        fids.add(ir.getId());
+                    }
+                    BulkRequest r = new BulkRequest(null);
+                    List<DocWriteRequest<?>> es = request.requests();
+                    for (DocWriteRequest<?> e : es) {
+                        if (fids.contains(e.id())) {
+                            r.add(e);
+                        }
+                    }
+                    request = r;
                 }
+            } catch (Exception e) {
+                ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) is failed with %s: %s", i, request.numberOfActions(), url, index, e.getClass().getSimpleName(), e.getMessage()));
             }
-            return false;
-        } else {
-            return true;
+            try {
+                Thread.sleep(BULK_RETRIES_SPAN);
+            } catch (InterruptedException ex) {
+            }
         }
+        return fc;
     }
 }

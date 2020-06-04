@@ -30,7 +30,7 @@ final class Index {
     public final long timeEnd;
 
     public Index(String prefix, InputLogEvent event) {
-        long tb = createTimeBegin(event.timestamp);
+        long tb = createTimeBegin(event.time);
 
         this.prefix = prefix;
         this.name = String.format("%s-%s", prefix, String.format("%1$tY.%1$tm.%1$td", tb));
@@ -39,7 +39,7 @@ final class Index {
     }
 
     public boolean contains(InputLogEvent event) {
-        return (event.timestamp >= timeBegin) && (event.timestamp < timeEnd);
+        return (event.time >= timeBegin) && (event.time < timeEnd);
     }
 
     private static long createTimeBegin(long time) {

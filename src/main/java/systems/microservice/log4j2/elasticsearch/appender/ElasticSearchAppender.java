@@ -47,18 +47,18 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Plugin(name = "ElasticSearch", category = "Core", elementType = "appender", printObject = true)
 public final class ElasticSearchAppender extends AbstractAppender {
-    public static final long START = System.currentTimeMillis();
-    public static final String PROCESS = ManagementFactory.getRuntimeMXBean().getName();
-    public static final Map<String, String> LOGTAGS = createLogTags();
+    public static final long PROCESS_ID = createProcessID();
+    public static final long PROCESS_START_TIME = createProcessStartTime();
+    public static final Map<String, String> LOG_TAGS = createLogTags();
     public static final String HOST_NAME = createHostName();
     public static final String HOST_IP = createHostIP();
-    public static final String VARIABLES = createVariables();
-    public static final String PROPERTIES = createProperties();
+    public static final String ENVIRONMENT_VARIABLES = createEnvironmentVariables();
+    public static final String SYSTEM_PROPERTIES = createSystemProperties();
 
     private final AtomicBoolean enabled = new AtomicBoolean(false);
     private final AtomicBoolean flag = new AtomicBoolean(true);
     private final AtomicLong lost = new AtomicLong(0L);
-    private final AtomicLong lostSince = new AtomicLong(System.currentTimeMillis());
+    private final AtomicLong lostSinceTime = new AtomicLong(System.currentTimeMillis());
     private final String url;
     private final String index;
     private final int countMax;
@@ -110,7 +110,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     final AtomicBoolean enabled = ElasticSearchAppender.this.enabled;
                     final AtomicBoolean flag = ElasticSearchAppender.this.flag;
                     final AtomicLong lost = ElasticSearchAppender.this.lost;
-                    final AtomicLong lostSince = ElasticSearchAppender.this.lostSince;
+                    final AtomicLong lostSince = ElasticSearchAppender.this.lostSinceTime;
                     final String url = ElasticSearchAppender.this.url;
                     final String index = ElasticSearchAppender.this.index;
                     final long spanMax = ElasticSearchAppender.this.spanMax;
@@ -295,6 +295,24 @@ public final class ElasticSearchAppender extends AbstractAppender {
         System.out.println(String.format("%s [%s] [%s] SYSTEM - %s", t, Thread.currentThread().getName(), clazz.getSimpleName(), message));
     }
 
+    private static long createProcessID() {
+        String n = ManagementFactory.getRuntimeMXBean().getName();
+        if (n != null) {
+            String[] ns = n.split("@");
+            if (ns.length > 0) {
+                try {
+                    return Long.parseLong(ns[0]);
+                } catch (Exception e) {
+                }
+            }
+        }
+        return -1L;
+    }
+
+    private static long createProcessStartTime() {
+        return ManagementFactory.getRuntimeMXBean().getStartTime();
+    }
+
     private static Map<String, String> createLogTags() {
         final String PREFIX_EV = "LOGTAG_";
         final String PREFIX_SP = "logtag.";
@@ -343,7 +361,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         }
     }
 
-    private static String createVariables() {
+    private static String createEnvironmentVariables() {
         Map<String, String> evs = System.getenv();
         StringBuilder sb = new StringBuilder(8192);
         for (Map.Entry<String, String> e : evs.entrySet()) {
@@ -359,7 +377,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return sb.toString();
     }
 
-    private static String createProperties() {
+    private static String createSystemProperties() {
         Properties sps = System.getProperties();
         StringBuilder sb = new StringBuilder(8192);
         for (Map.Entry<Object, Object> e : sps.entrySet()) {

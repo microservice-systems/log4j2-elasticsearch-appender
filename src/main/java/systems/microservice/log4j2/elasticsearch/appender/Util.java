@@ -18,6 +18,8 @@
 package systems.microservice.log4j2.elasticsearch.appender;
 
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * @author Dmitry Kotlyarov
@@ -39,6 +41,14 @@ public final class Util {
             }
         } else {
             return null;
+        }
+    }
+
+    public static String loadString(String path, String defaultValue) {
+        try {
+            return new String(Files.readAllBytes(Paths.get(path)));
+        } catch (Exception e) {
+            return defaultValue;
         }
     }
 }
