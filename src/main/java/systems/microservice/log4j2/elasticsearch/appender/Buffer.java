@@ -85,7 +85,7 @@ final class Buffer {
         return false;
     }
 
-    public void flush(RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSinceTime) {
+    public void flush(RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSize) {
         section.disable();
         try {
             section.await(100L);
@@ -94,15 +94,8 @@ final class Buffer {
                     for (InputLogEvent e : eventsQueue) {
                         eventsList.add(e);
                     }
-                    InputLogEvent le = null;
-                    long l = lostCount.get();
-                    if (l > 0L) {
-                        le = new InputLogEvent(l, lostSinceTime.get(), System.currentTimeMillis());
-                        eventsList.add(le);
-                    }
                     Collections.sort(eventsList);
                     Index idx = null;
-                    boolean lef = false;
                     BulkRequest r = new BulkRequest(null);
                     for (InputLogEvent e : eventsList) {
                         if ((idx == null) || !idx.contains(e)) {
@@ -111,34 +104,13 @@ final class Buffer {
                         e.index(idx.name);
                         if ((r.numberOfActions() < BULK_COUNT_MAX) && (r.estimatedSizeInBytes() < BULK_SIZE_MAX)) {
                             r.add(e);
-                            if (e == le) {
-                                lef = true;
-                            }
                         } else {
-                            int fc = putEvents(client, url, index, r);
-                            if (fc == 0) {
-                                if (lef) {
-                                    lostCount.addAndGet(-l);
-                                }
-                            } else {
-                                lostCount.addAndGet(fc);
-                            }
-                            lef = false;
+                            lostCount.addAndGet(putEvents(client, url, index, r));
                             r = new BulkRequest(null);
                             r.add(e);
-                            if (e == le) {
-                                lef = true;
-                            }
                         }
                     }
-                    int fc = putEvents(client, url, index, r);
-                    if (fc == 0) {
-                        if (lef) {
-                            lostCount.addAndGet(-l);
-                        }
-                    } else {
-                        lostCount.addAndGet(fc);
-                    }
+                    lostCount.addAndGet(putEvents(client, url, index, r));
                 } finally {
                     eventsList.clear();
                     eventsQueue.clear();

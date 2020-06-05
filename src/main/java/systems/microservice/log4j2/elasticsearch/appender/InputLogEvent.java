@@ -46,7 +46,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
     public final long time;
     public final int size;
 
-    public InputLogEvent(boolean start) {
+    public InputLogEvent(boolean start, AtomicLong totalCount, AtomicLong totalSize, long lostCount, long lostSize) {
         super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
 
         this.time = start ? ElasticSearchAppender.PROCESS_START_TIME : System.currentTimeMillis();
@@ -94,45 +94,10 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("system.properties", ElasticSearchAppender.SYSTEM_PROPERTIES);
             this.size = buf.size() + SIZE_OVERHEAD;
             cb.field("size", size);
-            cb.endObject();
-            this.doc(cb);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public InputLogEvent(long lostCount, long lostSinceTime, long lostToTime) {
-        super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
-
-        this.time = System.currentTimeMillis();
-        this.docAsUpsert(true);
-
-        try {
-            Thread t = Thread.currentThread();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream(256);
-            XContentBuilder cb = XContentFactory.smileBuilder(buf);
-            cb.humanReadable(true);
-            cb.startObject();
-            cb.timeField("time", time);
-            cb.field("type", "LOST");
-            cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
-            cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
-            for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
-                cb.field(e.getKey(), e.getValue());
-            }
-            cb.field("host.name", ElasticSearchAppender.HOST_NAME);
-            cb.field("host.ip", ElasticSearchAppender.HOST_IP);
-            cb.field("logger", ElasticSearchAppender.class.getName());
-            cb.field("thread.id", t.getId());
-            addField(cb, "thread.name", t.getName(), 256);
-            cb.field("thread.priority", t.getPriority());
-            cb.field("level", "INFO");
-            cb.field("message", String.format("Lost %d events", lostCount));
+            cb.field("total.count", totalCount.incrementAndGet());
+            cb.field("total.size", totalSize.addAndGet(size));
             cb.field("lost.count", lostCount);
-            cb.timeField("lost.since.time", lostSinceTime);
-            cb.timeField("lost.to.time", lostToTime);
-            this.size = buf.size() + SIZE_OVERHEAD;
-            cb.field("size", size);
+            cb.field("lost.size", lostSize);
             cb.endObject();
             this.doc(cb);
         } catch (IOException e) {
@@ -140,7 +105,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         }
     }
 
-    public InputLogEvent(LogEvent event, int lengthMax) {
+    public InputLogEvent(LogEvent event, int lengthMax, AtomicLong totalCount, AtomicLong totalSize, long lostCount, long lostSize) {
         super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
 
         this.time = event.getTimeMillis();
@@ -153,7 +118,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.humanReadable(true);
             cb.startObject();
             cb.timeField("time", time);
-            cb.field("type", (ex == null) ? "SIMPLE" : "EXCEPTION");
+            cb.field("type", (ex == null) ? "DEFAULT" : "EXCEPTION");
             cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
             cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
             for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
@@ -219,6 +184,10 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             }
             this.size = buf.size() + SIZE_OVERHEAD;
             cb.field("size", size);
+            cb.field("total.count", totalCount.incrementAndGet());
+            cb.field("total.size", totalSize.addAndGet(size));
+            cb.field("lost.count", lostCount);
+            cb.field("lost.size", lostSize);
             cb.endObject();
             this.doc(cb);
         } catch (IOException e) {
