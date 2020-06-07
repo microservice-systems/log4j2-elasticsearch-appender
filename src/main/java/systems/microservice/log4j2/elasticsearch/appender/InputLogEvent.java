@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.0
  */
 final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEvent> {
-    private static final int SIZE_OVERHEAD = 32;
+    private static final int SIZE_OVERHEAD = 64;
     private static final long mostSigBits = new SecureRandom().nextLong();
     private static final AtomicLong leastSigBits = new AtomicLong(0L);
 
@@ -54,7 +54,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Thread t = Thread.currentThread();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream(131072);
+            ByteArrayOutputStream buf = new ByteArrayOutputStream(65536);
             XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
@@ -92,6 +92,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             }
             cb.field("environment.variables", ElasticSearchAppender.ENVIRONMENT_VARIABLES);
             cb.field("system.properties", ElasticSearchAppender.SYSTEM_PROPERTIES);
+            cb.flush();
             this.size = buf.size() + SIZE_OVERHEAD;
             cb.field("size", size);
             cb.field("total.count", totalCount.incrementAndGet());
@@ -182,6 +183,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                     addField(cb, "ctx.exception.message", e.getMessage(), lengthMax);
                 }
             }
+            cb.flush();
             this.size = buf.size() + SIZE_OVERHEAD;
             cb.field("size", size);
             cb.field("total.count", totalCount.incrementAndGet());
