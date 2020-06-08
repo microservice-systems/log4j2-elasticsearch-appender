@@ -96,19 +96,21 @@ final class Buffer {
                     }
                     Collections.sort(eventsList);
                     Index idx = null;
+                    long bc = 0L;
+                    long bs = 0L;
                     BulkRequest r = new BulkRequest(null);
                     for (InputLogEvent e : eventsList) {
                         if ((idx == null) || !idx.contains(e)) {
                             idx = new Index(index, e);
                         }
                         e.index(idx.name);
-                        if ((r.numberOfActions() < BULK_COUNT_MAX) && (r.estimatedSizeInBytes() < BULK_SIZE_MAX)) {
-                            r.add(e);
-                        } else {
+                        if ((bc >= BULK_COUNT_MAX) || (bs >= BULK_SIZE_MAX)) {
                             lostCount.addAndGet(putEvents(client, url, index, r));
                             r = new BulkRequest(null);
-                            r.add(e);
                         }
+                        r.add(e);
+                        bc++;
+                        bs += e.size;
                     }
                     lostCount.addAndGet(putEvents(client, url, index, r));
                 } finally {
