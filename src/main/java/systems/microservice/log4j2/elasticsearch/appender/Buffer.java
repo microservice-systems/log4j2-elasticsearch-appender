@@ -105,14 +105,16 @@ final class Buffer {
                         }
                         e.index(idx.name);
                         if ((bc >= BULK_COUNT_MAX) || (bs >= BULK_SIZE_MAX)) {
-                            lostCount.addAndGet(putEvents(client, url, index, r));
+                            putEvents(client, url, index, lostCount, lostSize, r);
                             r = new BulkRequest(null);
+                            bc = 0L;
+                            bs = 0L;
                         }
                         r.add(e);
                         bc++;
                         bs += e.size;
                     }
-                    lostCount.addAndGet(putEvents(client, url, index, r));
+                    putEvents(client, url, index, lostCount, lostSize, r);
                 } finally {
                     eventsList.clear();
                     eventsQueue.clear();
@@ -125,43 +127,47 @@ final class Buffer {
         }
     }
 
-    private int putEvents(RestHighLevelClient client, String url, String index, BulkRequest request) {
+    private void putEvents(RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSize, BulkRequest request) {
         int fc = 0;
+        long fs = 0L;
         for (int i = 0; (request.numberOfActions() > 0) && (i < BULK_RETRIES); ++i) {
+            BulkResponse rsp = null;
             try {
-                BulkResponse rsp = client.bulk(request, RequestOptions.DEFAULT);
-                fc = 0;
-                BulkItemResponse[] irs = rsp.getItems();
-                for (BulkItemResponse ir : irs) {
-                    if (ir.isFailed()) {
-                        fc++;
-                    }
-                }
-                if (fc == 0) {
-                    return 0;
-                } else {
-                    ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) contains %d failed events", i, request.numberOfActions(), url, index, fc));
-                    HashSet<String> fids = new HashSet<>(Math.max(fc, 16));
-                    for (BulkItemResponse ir : irs) {
-                        fids.add(ir.getId());
-                    }
-                    BulkRequest r = new BulkRequest(null);
-                    List<DocWriteRequest<?>> es = request.requests();
-                    for (DocWriteRequest<?> e : es) {
-                        if (fids.contains(e.id())) {
-                            r.add(e);
-                        }
-                    }
-                    request = r;
-                }
+                rsp = client.bulk(request, RequestOptions.DEFAULT);
             } catch (Exception e) {
                 ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) is failed with %s: %s", i, request.numberOfActions(), url, index, e.getClass().getSimpleName(), e.getMessage()));
+            }
+            if (!rsp.hasFailures()) {
+                return;
+            } else {
+                fc = 0;
+                fs = 0L;
+                BulkItemResponse[] irs = rsp.getItems();
+                HashSet<String> fids = new HashSet<>(Math.max(fc, 16));
+                for (BulkItemResponse ir : irs) {
+                    fids.add(ir.getId());
+                }
+                BulkRequest r = new BulkRequest(null);
+                List<DocWriteRequest<?>> es = request.requests();
+                for (DocWriteRequest<?> e : es) {
+                    if (fids.contains(e.id())) {
+                        if (e instanceof InputLogEvent) {
+                            InputLogEvent ile = (InputLogEvent) e;
+                            r.add(ile);
+                            fc++;
+                            fs += ile.size;
+                        }
+                    }
+                }
+                ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) contains %d failed events of size %d", i, request.numberOfActions(), url, index, fc, fs));
+                request = r;
             }
             try {
                 Thread.sleep(BULK_RETRIES_SPAN);
             } catch (InterruptedException ex) {
             }
         }
-        return fc;
+        lostCount.addAndGet(fc);
+        lostSize.addAndGet(fs);
     }
 }

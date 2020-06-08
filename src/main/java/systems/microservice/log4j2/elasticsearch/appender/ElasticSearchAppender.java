@@ -96,30 +96,51 @@ public final class ElasticSearchAppender extends AbstractAppender {
             this.flushThread = new Thread(String.format("log4j2-elasticsearch-appender-flush-%s", name)) {
                 @Override
                 public void run() {
-                    final AtomicBoolean enabled = ElasticSearchAppender.this.enabled;
-                    final AtomicBoolean flag = ElasticSearchAppender.this.flag;
-                    final AtomicLong totalCount = ElasticSearchAppender.this.totalCount;
-                    final AtomicLong totalSize = ElasticSearchAppender.this.totalSize;
-                    final AtomicLong lostCount = ElasticSearchAppender.this.lostCount;
-                    final AtomicLong lostSize = ElasticSearchAppender.this.lostSize;
-                    final String url = ElasticSearchAppender.this.url;
-                    final String index = ElasticSearchAppender.this.index;
-                    final long spanMax = ElasticSearchAppender.this.spanMax;
-                    final RestHighLevelClient client = ElasticSearchAppender.this.client;
-                    final Buffer buffer1 = ElasticSearchAppender.this.buffer1;
-                    final Buffer buffer2 = ElasticSearchAppender.this.buffer2;
-                    long pt = System.currentTimeMillis();
-                    while (enabled.get()) {
-                        long t = System.currentTimeMillis();
-                        if (t >= pt + spanMax) {
-                            if (flag.get()) {
+                    try {
+                        ElasticSearchAppender.logSystem(ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is started: url='%s' index='%s' countMax=%d sizeMax=%d spanMax=%d lengthMax=%d",
+                                                                                                   url, index, countMax, sizeMax, spanMax, lengthMax));
+                        final AtomicBoolean enabled = ElasticSearchAppender.this.enabled;
+                        final AtomicBoolean flag = ElasticSearchAppender.this.flag;
+                        final AtomicLong totalCount = ElasticSearchAppender.this.totalCount;
+                        final AtomicLong totalSize = ElasticSearchAppender.this.totalSize;
+                        final AtomicLong lostCount = ElasticSearchAppender.this.lostCount;
+                        final AtomicLong lostSize = ElasticSearchAppender.this.lostSize;
+                        final String url = ElasticSearchAppender.this.url;
+                        final String index = ElasticSearchAppender.this.index;
+                        final long spanMax = ElasticSearchAppender.this.spanMax;
+                        final RestHighLevelClient client = ElasticSearchAppender.this.client;
+                        final Buffer buffer1 = ElasticSearchAppender.this.buffer1;
+                        final Buffer buffer2 = ElasticSearchAppender.this.buffer2;
+                        long pt = System.currentTimeMillis();
+                        while (enabled.get()) {
+                            long t = System.currentTimeMillis();
+                            if (t >= pt + spanMax) {
+                                if (flag.get()) {
+                                    try {
+                                        flag.set(false);
+                                        buffer1.flush(client, url, index, lostCount, lostSize);
+                                    } catch (Throwable e) {
+                                        ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
+                                    }
+                                } else {
+                                    try {
+                                        flag.set(true);
+                                        buffer2.flush(client, url, index, lostCount, lostSize);
+                                    } catch (Throwable e) {
+                                        ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
+                                    }
+                                }
+                                pt = t;
+                            }
+                            if (!buffer1.isReady()) {
                                 try {
                                     flag.set(false);
                                     buffer1.flush(client, url, index, lostCount, lostSize);
                                 } catch (Throwable e) {
                                     ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                                 }
-                            } else {
+                            }
+                            if (!buffer2.isReady()) {
                                 try {
                                     flag.set(true);
                                     buffer2.flush(client, url, index, lostCount, lostSize);
@@ -127,64 +148,59 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                     ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                                 }
                             }
-                            pt = t;
-                        }
-                        if (!buffer1.isReady()) {
                             try {
-                                flag.set(false);
-                                buffer1.flush(client, url, index, lostCount, lostSize);
-                            } catch (Throwable e) {
-                                ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
-                            }
-                        }
-                        if (!buffer2.isReady()) {
-                            try {
-                                flag.set(true);
-                                buffer2.flush(client, url, index, lostCount, lostSize);
-                            } catch (Throwable e) {
-                                ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
+                                Thread.sleep(1000L);
+                            } catch (InterruptedException e) {
                             }
                         }
                         try {
-                            Thread.sleep(1000L);
-                        } catch (InterruptedException e) {
+                            append(new InputLogEvent(false, totalCount, totalSize, lostCount.get(), lostSize.get()));
+                        } catch (Throwable e) {
+                            ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
                         }
-                    }
-                    try {
-                        append(new InputLogEvent(false, totalCount, totalSize, lostCount.get(), lostSize.get()));
-                    } catch (Throwable e) {
-                        ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
-                    }
-                    try {
-                        flag.set(false);
-                        buffer1.flush(client, url, index, lostCount, lostSize);
-                    } catch (Throwable e) {
-                        ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
-                    }
-                    try {
-                        flag.set(true);
-                        buffer2.flush(client, url, index, lostCount, lostSize);
-                    } catch (Throwable e) {
-                        ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
+                        try {
+                            flag.set(false);
+                            buffer1.flush(client, url, index, lostCount, lostSize);
+                        } catch (Throwable e) {
+                            ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
+                        }
+                        try {
+                            flag.set(true);
+                            buffer2.flush(client, url, index, lostCount, lostSize);
+                        } catch (Throwable e) {
+                            ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
+                        }
+                    } finally {
+                        ElasticSearchAppender.logSystem(ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is finished: url='%s' index='%s' countMax=%d sizeMax=%d spanMax=%d lengthMax=%d totalCount=%d totalSize=%d lostCount=%d lostSize=%d",
+                                                                                                   url, index, countMax, sizeMax, spanMax, lengthMax,
+                                                                                                   ElasticSearchAppender.this.totalCount.get(),
+                                                                                                   ElasticSearchAppender.this.totalSize.get(),
+                                                                                                   ElasticSearchAppender.this.lostCount.get(),
+                                                                                                   ElasticSearchAppender.this.lostSize.get()));
                     }
                 }
             };
-            append(new InputLogEvent(true, totalCount, totalSize, lostCount.get(), lostSize.get()));
-            Runtime.getRuntime().addShutdownHook(new Thread(String.format("log4j2-elasticsearch-appender-shutdown-%s", name)) {
-                @Override
-                public void run() {
-                    final AtomicBoolean enabled = ElasticSearchAppender.this.enabled;
-                    final Thread flushThread = ElasticSearchAppender.this.flushThread;
-                    enabled.set(false);
-                    if (flushThread.isAlive()) {
-                        flushThread.interrupt();
-                        try {
-                            flushThread.join();
-                        } catch (InterruptedException e) {
+            try {
+                Runtime.getRuntime().addShutdownHook(new Thread(String.format("log4j2-elasticsearch-appender-shutdown-%s", name)) {
+                    @Override
+                    public void run() {
+                        final AtomicBoolean enabled = ElasticSearchAppender.this.enabled;
+                        final Thread flushThread = ElasticSearchAppender.this.flushThread;
+                        enabled.set(false);
+                        if (flushThread.isAlive()) {
+                            flushThread.interrupt();
+                            try {
+                                flushThread.join();
+                            } catch (InterruptedException e) {
+                            }
                         }
                     }
-                }
-            });
+                });
+            } catch (Exception e) {
+                ElasticSearchAppender.logSystem(ElasticSearchAppender.class, e.getMessage());
+            }
+            append(new InputLogEvent(true, totalCount, totalSize, lostCount.get(), lostSize.get()));
+            ElasticSearchAppender.logSystem(ElasticSearchAppender.class, "Log4j2 ElasticSearch Appender is initialized");
         } else {
             this.url = url;
             this.index = null;
