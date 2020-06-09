@@ -48,12 +48,8 @@ public final class ThreadSection {
         return enabled.compareAndSet(true, false);
     }
 
-    public void await(long millis) {
+    public void await() {
         while (!isDisabled()) {
-            try {
-                Thread.sleep(millis);
-            } catch (InterruptedException e) {
-            }
         }
     }
 

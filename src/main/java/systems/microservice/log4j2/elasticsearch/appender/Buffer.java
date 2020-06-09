@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -85,10 +86,10 @@ final class Buffer {
         return false;
     }
 
-    public void flush(RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSize) {
+    public void flush(AtomicBoolean enabled, RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSize) {
         section.disable();
         try {
-            section.await(100L);
+            section.await();
             if (count.get() > 0) {
                 try {
                     for (InputLogEvent e : eventsQueue) {
@@ -105,7 +106,7 @@ final class Buffer {
                         }
                         e.index(idx.name);
                         if ((bc >= BULK_COUNT_MAX) || (bs >= BULK_SIZE_MAX)) {
-                            putEvents(client, url, index, lostCount, lostSize, r);
+                            putEvents(enabled, client, url, index, lostCount, lostSize, r);
                             r = new BulkRequest(null);
                             bc = 0L;
                             bs = 0L;
@@ -114,7 +115,7 @@ final class Buffer {
                         bc++;
                         bs += e.size;
                     }
-                    putEvents(client, url, index, lostCount, lostSize, r);
+                    putEvents(enabled, client, url, index, lostCount, lostSize, r);
                 } finally {
                     eventsList.clear();
                     eventsQueue.clear();
@@ -127,7 +128,7 @@ final class Buffer {
         }
     }
 
-    private void putEvents(RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSize, BulkRequest request) {
+    private void putEvents(AtomicBoolean enabled, RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSize, BulkRequest request) {
         int fc = 0;
         long fs = 0L;
         for (int i = 0; (request.numberOfActions() > 0) && (i < BULK_RETRIES); ++i) {
@@ -136,6 +137,7 @@ final class Buffer {
                 rsp = client.bulk(request, RequestOptions.DEFAULT);
             } catch (Exception e) {
                 ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) is failed with %s: %s", i, request.numberOfActions(), url, index, e.getClass().getSimpleName(), e.getMessage()));
+                continue;
             }
             if (!rsp.hasFailures()) {
                 return;
@@ -162,9 +164,11 @@ final class Buffer {
                 ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) contains %d failed events of size %d", i, request.numberOfActions(), url, index, fc, fs));
                 request = r;
             }
-            try {
-                Thread.sleep(BULK_RETRIES_SPAN);
-            } catch (InterruptedException ex) {
+            if (enabled.get()) {
+                try {
+                    Thread.sleep(BULK_RETRIES_SPAN);
+                } catch (InterruptedException ex) {
+                }
             }
         }
         lostCount.addAndGet(fc);
