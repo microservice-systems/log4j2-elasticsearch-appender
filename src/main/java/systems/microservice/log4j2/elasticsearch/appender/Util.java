@@ -20,6 +20,7 @@ package systems.microservice.log4j2.elasticsearch.appender;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.regex.Pattern;
 
 /**
  * @author Dmitry Kotlyarov
@@ -41,6 +42,27 @@ public final class Util {
             }
         } else {
             return null;
+        }
+    }
+
+    public static Pattern compile(String regex) {
+        if (regex != null) {
+            if (!regex.isEmpty()) {
+                return Pattern.compile(regex);
+            }
+        }
+        return null;
+    }
+
+    public static boolean match(Pattern regex, String value) {
+        if (regex != null) {
+            if (value != null) {
+                return regex.matcher(value).matches();
+            } else {
+                return false;
+            }
+        } else {
+            return true;
         }
     }
 

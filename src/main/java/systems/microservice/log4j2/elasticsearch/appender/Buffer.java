@@ -137,6 +137,12 @@ final class Buffer {
                 rsp = client.bulk(request, RequestOptions.DEFAULT);
             } catch (Exception e) {
                 ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) is failed with %s: %s", i, request.numberOfActions(), url, index, e.getClass().getSimpleName(), e.getMessage()));
+                if (enabled.get()) {
+                    try {
+                        Thread.sleep(BULK_RETRIES_SPAN);
+                    } catch (InterruptedException ex) {
+                    }
+                }
                 continue;
             }
             if (!rsp.hasFailures()) {
