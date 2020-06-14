@@ -41,7 +41,9 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
     private static final int SIZE_OVERHEAD = 64;
     private static final String PROCESS_UUID = ElasticSearchAppender.PROCESS_UUID.toString();
     private static final long MOST_SIG_BITS = ElasticSearchAppender.PROCESS_UUID.getMostSignificantBits();
-    private static final AtomicLong LEAST_SIG_BITS = new AtomicLong(0L);
+    private static final AtomicLong THREAD_LEAST_SIG_BITS = new AtomicLong(0L);
+    private static final AtomicLong EVENT_LEAST_SIG_BITS = new AtomicLong(0L);
+    private static final ThreadLocal<String> THREAD_UUID = ThreadLocal.withInitial(() -> new UUID(MOST_SIG_BITS, THREAD_LEAST_SIG_BITS.getAndIncrement()).toString());
 
     public final long time;
     public final int size;
@@ -65,7 +67,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          int lengthStringMax,
                          boolean out,
                          boolean setDefaultUncaughtExceptionHandler) {
-        super(null, new UUID(MOST_SIG_BITS, LEAST_SIG_BITS.getAndIncrement()).toString());
+        super(null, new UUID(MOST_SIG_BITS, EVENT_LEAST_SIG_BITS.getAndIncrement()).toString());
 
         this.time = start ? ElasticSearchAppender.PROCESS_START_TIME : System.currentTimeMillis();
         this.docAsUpsert(true);
@@ -101,6 +103,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("host.ip", ElasticSearchAppender.HOST_IP);
             cb.field("logger", ElasticSearchAppender.class.getName());
             cb.field("thread.id", t.getId());
+            cb.field("thread.uuid", InputLogEvent.THREAD_UUID.get());
             addField(cb, "thread.name", t.getName(), lengthStringMax);
             cb.field("thread.priority", t.getPriority());
             cb.field("level", "INFO");
@@ -145,7 +148,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          long lostCount,
                          long lostSize,
                          int lengthStringMax) {
-        super(null, new UUID(MOST_SIG_BITS, LEAST_SIG_BITS.getAndIncrement()).toString());
+        super(null, new UUID(MOST_SIG_BITS, EVENT_LEAST_SIG_BITS.getAndIncrement()).toString());
 
         this.time = event.getTimeMillis();
         this.docAsUpsert(true);
@@ -168,6 +171,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("host.ip", ElasticSearchAppender.HOST_IP);
             addField(cb, "logger", event.getLoggerName(), lengthStringMax);
             cb.field("thread.id", event.getThreadId());
+            cb.field("thread.uuid", InputLogEvent.THREAD_UUID.get());
             addField(cb, "thread.name", event.getThreadName(), lengthStringMax);
             cb.field("thread.priority", event.getThreadPriority());
             Level l = event.getLevel();
