@@ -29,7 +29,6 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.security.SecureRandom;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,8 +39,9 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEvent> {
     private static final int SIZE_OVERHEAD = 64;
-    private static final long mostSigBits = new SecureRandom().nextLong();
-    private static final AtomicLong leastSigBits = new AtomicLong(0L);
+    private static final String PROCESS_UUID = ElasticSearchAppender.PROCESS_UUID.toString();
+    private static final long MOST_SIG_BITS = ElasticSearchAppender.PROCESS_UUID.getMostSignificantBits();
+    private static final AtomicLong LEAST_SIG_BITS = new AtomicLong(0L);
 
     public final long time;
     public final int size;
@@ -65,7 +65,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          int lengthStringMax,
                          boolean out,
                          boolean setDefaultUncaughtExceptionHandler) {
-        super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
+        super(null, new UUID(MOST_SIG_BITS, LEAST_SIG_BITS.getAndIncrement()).toString());
 
         this.time = start ? ElasticSearchAppender.PROCESS_START_TIME : System.currentTimeMillis();
         this.docAsUpsert(true);
@@ -83,6 +83,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                 cb.field("type", "FINISH");
             }
             cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
+            cb.field("process.uuid", InputLogEvent.PROCESS_UUID);
             cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
             if (!start) {
                 cb.timeField("process.finish.time", time);
@@ -144,7 +145,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          long lostCount,
                          long lostSize,
                          int lengthStringMax) {
-        super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
+        super(null, new UUID(MOST_SIG_BITS, LEAST_SIG_BITS.getAndIncrement()).toString());
 
         this.time = event.getTimeMillis();
         this.docAsUpsert(true);
@@ -158,6 +159,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.timeField("time", time);
             cb.field("type", (ex == null) ? "DEFAULT" : "EXCEPTION");
             cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
+            cb.field("process.uuid", InputLogEvent.PROCESS_UUID);
             cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
             for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
                 addField(cb, e.getKey(), e.getValue(), lengthStringMax);

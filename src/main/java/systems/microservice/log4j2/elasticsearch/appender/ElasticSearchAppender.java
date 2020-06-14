@@ -36,10 +36,8 @@ import org.elasticsearch.client.RestHighLevelClient;
 import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.net.*;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.security.SecureRandom;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -50,6 +48,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Plugin(name = "ElasticSearch", category = "Core", elementType = "appender", printObject = true)
 public final class ElasticSearchAppender extends AbstractAppender {
     public static final long PROCESS_ID = createProcessID();
+    public static final UUID PROCESS_UUID = createProcessUUID();
     public static final long PROCESS_START_TIME = createProcessStartTime();
     public static final Map<String, String> LOG_TAGS = createLogTags();
     public static final String HOST_NAME = createHostName();
@@ -428,6 +427,10 @@ public final class ElasticSearchAppender extends AbstractAppender {
             }
         }
         return -1L;
+    }
+
+    private static UUID createProcessUUID() {
+        return new UUID(new SecureRandom().nextLong(), 0L);
     }
 
     private static long createProcessStartTime() {
