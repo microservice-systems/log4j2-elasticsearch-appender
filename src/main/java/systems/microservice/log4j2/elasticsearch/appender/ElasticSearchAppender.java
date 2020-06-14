@@ -78,31 +78,11 @@ public final class ElasticSearchAppender extends AbstractAppender {
     private final int lengthLogTagValueMax;
     private final int lengthMessageMax;
     private final int lengthStackTraceMax;
-    private final String patternLoggerInclude;
-    private final String patternLoggerExclude;
-    private final String patternMessageInclude;
-    private final String patternMessageExclude;
-    private final String patternSrcClassInclude;
-    private final String patternSrcClassExclude;
-    private final String patternExceptionClassInclude;
-    private final String patternExceptionClassExclude;
-    private final String patternExceptionMessageInclude;
-    private final String patternExceptionMessageExclude;
     private final boolean out;
     private final boolean setDefaultUncaughtExceptionHandler;
     private final RestHighLevelClient client;
     private final Buffer buffer1;
     private final Buffer buffer2;
-    private final Pattern patternLoggerIncludeC;
-    private final Pattern patternLoggerExcludeC;
-    private final Pattern patternMessageIncludeC;
-    private final Pattern patternMessageExcludeC;
-    private final Pattern patternSrcClassIncludeC;
-    private final Pattern patternSrcClassExcludeC;
-    private final Pattern patternExceptionClassIncludeC;
-    private final Pattern patternExceptionClassExcludeC;
-    private final Pattern patternExceptionMessageIncludeC;
-    private final Pattern patternExceptionMessageExcludeC;
     private final Thread flushThread;
 
     public ElasticSearchAppender(String name,
@@ -120,16 +100,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                  int lengthLogTagValueMax,
                                  int lengthMessageMax,
                                  int lengthStackTraceMax,
-                                 String patternLoggerInclude,
-                                 String patternLoggerExclude,
-                                 String patternMessageInclude,
-                                 String patternMessageExclude,
-                                 String patternSrcClassInclude,
-                                 String patternSrcClassExclude,
-                                 String patternExceptionClassInclude,
-                                 String patternExceptionClassExclude,
-                                 String patternExceptionMessageInclude,
-                                 String patternExceptionMessageExclude,
                                  boolean out,
                                  boolean setDefaultUncaughtExceptionHandler,
                                  Filter filter,
@@ -150,16 +120,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
         this.lengthLogTagValueMax = lengthLogTagValueMax;
         this.lengthMessageMax = lengthMessageMax;
         this.lengthStackTraceMax = lengthStackTraceMax;
-        this.patternLoggerInclude = patternLoggerInclude;
-        this.patternLoggerExclude = patternLoggerExclude;
-        this.patternMessageInclude = patternMessageInclude;
-        this.patternMessageExclude = patternMessageExclude;
-        this.patternSrcClassInclude = patternSrcClassInclude;
-        this.patternSrcClassExclude = patternSrcClassExclude;
-        this.patternExceptionClassInclude = patternExceptionClassInclude;
-        this.patternExceptionClassExclude = patternExceptionClassExclude;
-        this.patternExceptionMessageInclude = patternExceptionMessageInclude;
-        this.patternExceptionMessageExclude = patternExceptionMessageExclude;
         this.out = out;
         this.setDefaultUncaughtExceptionHandler = setDefaultUncaughtExceptionHandler;
 
@@ -167,16 +127,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
             this.client = createClient(url);
             this.buffer1 = new Buffer(countMax, sizeMax);
             this.buffer2 = new Buffer(countMax, sizeMax);
-            this.patternLoggerIncludeC = Util.compile(patternLoggerInclude);
-            this.patternLoggerExcludeC = Util.compile(patternLoggerExclude);
-            this.patternMessageIncludeC = Util.compile(patternMessageInclude);
-            this.patternMessageExcludeC = Util.compile(patternMessageExclude);
-            this.patternSrcClassIncludeC = Util.compile(patternSrcClassInclude);
-            this.patternSrcClassExcludeC = Util.compile(patternSrcClassExclude);
-            this.patternExceptionClassIncludeC = Util.compile(patternExceptionClassInclude);
-            this.patternExceptionClassExcludeC = Util.compile(patternExceptionClassExclude);
-            this.patternExceptionMessageIncludeC = Util.compile(patternExceptionMessageInclude);
-            this.patternExceptionMessageExcludeC = Util.compile(patternExceptionMessageExclude);
             if (setDefaultUncaughtExceptionHandler) {
                 try {
                     Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
@@ -218,27 +168,16 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     final int lengthLogTagValueMax = ElasticSearchAppender.this.lengthLogTagValueMax;
                     final int lengthMessageMax = ElasticSearchAppender.this.lengthMessageMax;
                     final int lengthStackTraceMax = ElasticSearchAppender.this.lengthStackTraceMax;
-                    final String patternLoggerInclude = ElasticSearchAppender.this.patternLoggerInclude;
-                    final String patternLoggerExclude = ElasticSearchAppender.this.patternLoggerExclude;
-                    final String patternMessageInclude = ElasticSearchAppender.this.patternMessageInclude;
-                    final String patternMessageExclude = ElasticSearchAppender.this.patternMessageExclude;
-                    final String patternSrcClassInclude = ElasticSearchAppender.this.patternSrcClassInclude;
-                    final String patternSrcClassExclude = ElasticSearchAppender.this.patternSrcClassExclude;
-                    final String patternExceptionClassInclude = ElasticSearchAppender.this.patternExceptionClassInclude;
-                    final String patternExceptionClassExclude = ElasticSearchAppender.this.patternExceptionClassExclude;
-                    final String patternExceptionMessageInclude = ElasticSearchAppender.this.patternExceptionMessageInclude;
-                    final String patternExceptionMessageExclude = ElasticSearchAppender.this.patternExceptionMessageExclude;
                     final boolean out = ElasticSearchAppender.this.out;
                     final boolean setDefaultUncaughtExceptionHandler = ElasticSearchAppender.this.setDefaultUncaughtExceptionHandler;
                     final RestHighLevelClient client = ElasticSearchAppender.this.client;
                     final Buffer buffer1 = ElasticSearchAppender.this.buffer1;
                     final Buffer buffer2 = ElasticSearchAppender.this.buffer2;
                     try {
-                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is started: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d lengthLogTagValueMax=%d lengthMessageMax=%d lengthStackTraceMax=%d patternLoggerInclude='%s' patternLoggerExclude='%s' patternMessageInclude='%s' patternMessageExclude='%s' patternSrcClassInclude='%s' patternSrcClassExclude='%s' patternExceptionClassInclude='%s' patternExceptionClassExclude='%s' patternExceptionMessageInclude='%s' patternExceptionMessageExclude='%s' out=%b setDefaultUncaughtExceptionHandler=%b",
+                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is started: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d lengthLogTagValueMax=%d lengthMessageMax=%d lengthStackTraceMax=%d out=%b setDefaultUncaughtExceptionHandler=%b",
                                                                                                         name, url, index, enable,
                                                                                                         countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay,
                                                                                                         lengthStringMax, lengthLogTagValueMax, lengthMessageMax, lengthStackTraceMax,
-                                                                                                        patternLoggerInclude, patternLoggerExclude, patternMessageInclude, patternMessageExclude, patternSrcClassInclude, patternSrcClassExclude, patternExceptionClassInclude, patternExceptionClassExclude, patternExceptionMessageInclude, patternExceptionMessageExclude,
                                                                                                         out, setDefaultUncaughtExceptionHandler));
                         long pt = System.currentTimeMillis();
                         while (enabled.get()) {
@@ -302,11 +241,10 @@ public final class ElasticSearchAppender extends AbstractAppender {
                             ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                         }
                     } finally {
-                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is finished: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d lengthLogTagValueMax=%d lengthMessageMax=%d lengthStackTraceMax=%d patternLoggerInclude='%s' patternLoggerExclude='%s' patternMessageInclude='%s' patternMessageExclude='%s' patternSrcClassInclude='%s' patternSrcClassExclude='%s' patternExceptionClassInclude='%s' patternExceptionClassExclude='%s' patternExceptionMessageInclude='%s' patternExceptionMessageExclude='%s' out=%b setDefaultUncaughtExceptionHandler=%b totalCount=%d totalSize=%d lostCount=%d lostSize=%d",
+                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is finished: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d lengthLogTagValueMax=%d lengthMessageMax=%d lengthStackTraceMax=%d out=%b setDefaultUncaughtExceptionHandler=%b totalCount=%d totalSize=%d lostCount=%d lostSize=%d",
                                                                                                         name, url, index, enable,
                                                                                                         countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay,
                                                                                                         lengthStringMax, lengthLogTagValueMax, lengthMessageMax, lengthStackTraceMax,
-                                                                                                        patternLoggerInclude, patternLoggerExclude, patternMessageInclude, patternMessageExclude, patternSrcClassInclude, patternSrcClassExclude, patternExceptionClassInclude, patternExceptionClassExclude, patternExceptionMessageInclude, patternExceptionMessageExclude,
                                                                                                         out, setDefaultUncaughtExceptionHandler,
                                                                                                         totalCount.get(), totalSize.get(), lostCount.get(), lostSize.get()));
                     }
@@ -332,26 +270,15 @@ public final class ElasticSearchAppender extends AbstractAppender {
                 ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
             }
             append(new InputLogEvent(true, totalCount, totalSize, lostCount.get(), lostSize.get()));
-            ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is initialized: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d lengthLogTagValueMax=%d lengthMessageMax=%d lengthStackTraceMax=%d patternLoggerInclude='%s' patternLoggerExclude='%s' patternMessageInclude='%s' patternMessageExclude='%s' patternSrcClassInclude='%s' patternSrcClassExclude='%s' patternExceptionClassInclude='%s' patternExceptionClassExclude='%s' patternExceptionMessageInclude='%s' patternExceptionMessageExclude='%s' out=%b setDefaultUncaughtExceptionHandler=%b",
+            ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is initialized: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d lengthLogTagValueMax=%d lengthMessageMax=%d lengthStackTraceMax=%d out=%b setDefaultUncaughtExceptionHandler=%b",
                                                                                             name, url, index, enable,
                                                                                             countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay,
                                                                                             lengthStringMax, lengthLogTagValueMax, lengthMessageMax, lengthStackTraceMax,
-                                                                                            patternLoggerInclude, patternLoggerExclude, patternMessageInclude, patternMessageExclude, patternSrcClassInclude, patternSrcClassExclude, patternExceptionClassInclude, patternExceptionClassExclude, patternExceptionMessageInclude, patternExceptionMessageExclude,
                                                                                             out, setDefaultUncaughtExceptionHandler));
         } else {
             this.client = null;
             this.buffer1 = null;
             this.buffer2 = null;
-            this.patternLoggerIncludeC = null;
-            this.patternLoggerExcludeC = null;
-            this.patternMessageIncludeC = null;
-            this.patternMessageExcludeC = null;
-            this.patternSrcClassIncludeC = null;
-            this.patternSrcClassExcludeC = null;
-            this.patternExceptionClassIncludeC = null;
-            this.patternExceptionClassExcludeC = null;
-            this.patternExceptionMessageIncludeC = null;
-            this.patternExceptionMessageExcludeC = null;
             this.flushThread = null;
         }
     }
