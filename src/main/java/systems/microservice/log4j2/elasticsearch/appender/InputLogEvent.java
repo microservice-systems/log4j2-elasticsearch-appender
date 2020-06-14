@@ -51,7 +51,20 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          AtomicLong totalSize,
                          long lostCount,
                          long lostSize,
-                         int lengthStringMax) {
+                         String name,
+                         String url,
+                         String index,
+                         boolean enable,
+                         int countMax,
+                         long sizeMax,
+                         int bulkCountMax,
+                         long bulkSizeMax,
+                         long delayMax,
+                         int bulkRetries,
+                         long bulkRetriesDelay,
+                         int lengthStringMax,
+                         boolean out,
+                         boolean setDefaultUncaughtExceptionHandler) {
         super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
 
         this.time = start ? ElasticSearchAppender.PROCESS_START_TIME : System.currentTimeMillis();
@@ -95,6 +108,20 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             } else {
                 cb.field("message", "Goodbye World!");
             }
+            addField(cb, "appender.name", name, lengthStringMax);
+            addField(cb, "appender.url", url, lengthStringMax);
+            addField(cb, "appender.index", index, lengthStringMax);
+            cb.field("appender.enable", enable);
+            cb.field("appender.count.max", countMax);
+            cb.field("appender.size.max", sizeMax);
+            cb.field("appender.bulk.count.max", bulkCountMax);
+            cb.field("appender.bulk.size.max", bulkSizeMax);
+            cb.field("appender.delay.max", delayMax);
+            cb.field("appender.bulk.retries", bulkRetries);
+            cb.field("appender.bulk.retries.delay", bulkRetriesDelay);
+            cb.field("appender.length.string.max", lengthStringMax);
+            cb.field("appender.out", out);
+            cb.field("appender.set.default.uncaught.exception.handler", setDefaultUncaughtExceptionHandler);
             addField(cb, "environment.variables", ElasticSearchAppender.ENVIRONMENT_VARIABLES, lengthStringMax);
             addField(cb, "system.properties", ElasticSearchAppender.SYSTEM_PROPERTIES, lengthStringMax);
             cb.flush();

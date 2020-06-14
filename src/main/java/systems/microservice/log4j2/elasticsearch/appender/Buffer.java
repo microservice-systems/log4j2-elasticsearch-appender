@@ -94,7 +94,13 @@ final class Buffer {
         return false;
     }
 
-    public void flush(AtomicBoolean enabled, RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSize) {
+    public void flush(AtomicBoolean enabled,
+                      RestHighLevelClient client,
+                      String url,
+                      String index,
+                      AtomicLong lostCount,
+                      AtomicLong lostSize,
+                      boolean out) {
         section.disable();
         try {
             section.await();
@@ -114,7 +120,7 @@ final class Buffer {
                         }
                         e.index(idx.name);
                         if ((bc >= bulkCountMax) || (bs >= bulkSizeMax)) {
-                            putEvents(enabled, client, url, index, lostCount, lostSize, r);
+                            putEvents(enabled, client, url, index, lostCount, lostSize, out, r);
                             r = new BulkRequest(null);
                             bc = 0;
                             bs = 0L;
@@ -123,7 +129,7 @@ final class Buffer {
                         bc++;
                         bs += e.size;
                     }
-                    putEvents(enabled, client, url, index, lostCount, lostSize, r);
+                    putEvents(enabled, client, url, index, lostCount, lostSize, out, r);
                 } finally {
                     eventsList.clear();
                     eventsQueue.clear();
@@ -136,18 +142,25 @@ final class Buffer {
         }
     }
 
-    private void putEvents(AtomicBoolean enabled, RestHighLevelClient client, String url, String index, AtomicLong lostCount, AtomicLong lostSize, BulkRequest request) {
+    private void putEvents(AtomicBoolean enabled,
+                           RestHighLevelClient client,
+                           String url,
+                           String index,
+                           AtomicLong lostCount,
+                           AtomicLong lostSize,
+                           boolean out,
+                           BulkRequest request) {
         int fc = 0;
         long fs = 0L;
-        for (int i = 0; (request.numberOfActions() > 0) && (i < BULK_RETRIES); ++i) {
+        for (int i = 0; (request.numberOfActions() > 0) && (i < bulkRetries); ++i) {
             BulkResponse rsp = null;
             try {
                 rsp = client.bulk(request, RequestOptions.DEFAULT);
             } catch (Exception e) {
-                ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) is failed with %s: %s", i, request.numberOfActions(), url, index, e.getClass().getSimpleName(), e.getMessage()));
+                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) is failed with %s: %s", i, request.numberOfActions(), url, index, e.getClass().getSimpleName(), e.getMessage()));
                 if (enabled.get()) {
                     try {
-                        Thread.sleep(BULK_RETRIES_SPAN);
+                        Thread.sleep(bulkRetriesDelay);
                     } catch (InterruptedException ex) {
                     }
                 }
@@ -175,12 +188,12 @@ final class Buffer {
                         }
                     }
                 }
-                ElasticSearchAppender.logSystem(Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) contains %d failed events of size %d", i, request.numberOfActions(), url, index, fc, fs));
+                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) contains %d failed events of size %d", i, request.numberOfActions(), url, index, fc, fs));
                 request = r;
             }
             if (enabled.get()) {
                 try {
-                    Thread.sleep(BULK_RETRIES_SPAN);
+                    Thread.sleep(bulkRetriesDelay);
                 } catch (InterruptedException ex) {
                 }
             }

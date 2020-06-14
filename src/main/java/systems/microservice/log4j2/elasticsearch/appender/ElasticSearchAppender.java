@@ -172,14 +172,14 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                 if (flag.get()) {
                                     try {
                                         flag.set(false);
-                                        buffer1.flush(enabled, client, url, index, lostCount, lostSize);
+                                        buffer1.flush(enabled, client, url, index, lostCount, lostSize, out);
                                     } catch (Throwable e) {
                                         ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                                     }
                                 } else {
                                     try {
                                         flag.set(true);
-                                        buffer2.flush(enabled, client, url, index, lostCount, lostSize);
+                                        buffer2.flush(enabled, client, url, index, lostCount, lostSize, out);
                                     } catch (Throwable e) {
                                         ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                                     }
@@ -189,7 +189,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                             if (!buffer1.isReady()) {
                                 try {
                                     flag.set(false);
-                                    buffer1.flush(enabled, client, url, index, lostCount, lostSize);
+                                    buffer1.flush(enabled, client, url, index, lostCount, lostSize, out);
                                 } catch (Throwable e) {
                                     ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                                 }
@@ -197,7 +197,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                             if (!buffer2.isReady()) {
                                 try {
                                     flag.set(true);
-                                    buffer2.flush(enabled, client, url, index, lostCount, lostSize);
+                                    buffer2.flush(enabled, client, url, index, lostCount, lostSize, out);
                                 } catch (Throwable e) {
                                     ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                                 }
@@ -210,19 +210,37 @@ public final class ElasticSearchAppender extends AbstractAppender {
                             }
                         }
                         try {
-                            append(new InputLogEvent(false, totalCount, totalSize, lostCount.get(), lostSize.get(), lengthStringMax));
+                            append(new InputLogEvent(false,
+                                                     totalCount,
+                                                     totalSize,
+                                                     lostCount.get(),
+                                                     lostSize.get(),
+                                                     name,
+                                                     url,
+                                                     index,
+                                                     enable,
+                                                     countMax,
+                                                     sizeMax,
+                                                     bulkCountMax,
+                                                     bulkSizeMax,
+                                                     delayMax,
+                                                     bulkRetries,
+                                                     bulkRetriesDelay,
+                                                     lengthStringMax,
+                                                     out,
+                                                     setDefaultUncaughtExceptionHandler));
                         } catch (Throwable e) {
                             ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                         }
                         try {
                             flag.set(false);
-                            buffer1.flush(enabled, client, url, index, lostCount, lostSize);
+                            buffer1.flush(enabled, client, url, index, lostCount, lostSize, out);
                         } catch (Throwable e) {
                             ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                         }
                         try {
                             flag.set(true);
-                            buffer2.flush(enabled, client, url, index, lostCount, lostSize);
+                            buffer2.flush(enabled, client, url, index, lostCount, lostSize, out);
                         } catch (Throwable e) {
                             ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                         }
@@ -254,7 +272,25 @@ public final class ElasticSearchAppender extends AbstractAppender {
             } catch (Exception e) {
                 ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
             }
-            append(new InputLogEvent(true, totalCount, totalSize, lostCount.get(), lostSize.get(), lengthStringMax));
+            append(new InputLogEvent(true,
+                                     totalCount,
+                                     totalSize,
+                                     lostCount.get(),
+                                     lostSize.get(),
+                                     name,
+                                     url,
+                                     index,
+                                     enable,
+                                     countMax,
+                                     sizeMax,
+                                     bulkCountMax,
+                                     bulkSizeMax,
+                                     delayMax,
+                                     bulkRetries,
+                                     bulkRetriesDelay,
+                                     lengthStringMax,
+                                     out,
+                                     setDefaultUncaughtExceptionHandler));
             ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is initialized: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d out=%b setDefaultUncaughtExceptionHandler=%b",
                                                                                             name, url, index, enable,
                                                                                             countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay, lengthStringMax,
