@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 
 /**
  * @author Dmitry Kotlyarov
@@ -75,9 +74,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
     private final int bulkRetries;
     private final long bulkRetriesDelay;
     private final int lengthStringMax;
-    private final int lengthLogTagValueMax;
-    private final int lengthMessageMax;
-    private final int lengthStackTraceMax;
     private final boolean out;
     private final boolean setDefaultUncaughtExceptionHandler;
     private final RestHighLevelClient client;
@@ -97,9 +93,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                  int bulkRetries,
                                  long bulkRetriesDelay,
                                  int lengthStringMax,
-                                 int lengthLogTagValueMax,
-                                 int lengthMessageMax,
-                                 int lengthStackTraceMax,
                                  boolean out,
                                  boolean setDefaultUncaughtExceptionHandler,
                                  Filter filter,
@@ -117,16 +110,13 @@ public final class ElasticSearchAppender extends AbstractAppender {
         this.bulkRetries = bulkRetries;
         this.bulkRetriesDelay = bulkRetriesDelay * 1000L;
         this.lengthStringMax = lengthStringMax;
-        this.lengthLogTagValueMax = lengthLogTagValueMax;
-        this.lengthMessageMax = lengthMessageMax;
-        this.lengthStackTraceMax = lengthStackTraceMax;
         this.out = out;
         this.setDefaultUncaughtExceptionHandler = setDefaultUncaughtExceptionHandler;
 
         if ((url != null) && (index != null) && enable) {
             this.client = createClient(url);
-            this.buffer1 = new Buffer(countMax, sizeMax);
-            this.buffer2 = new Buffer(countMax, sizeMax);
+            this.buffer1 = new Buffer(countMax, sizeMax, bulkCountMax, bulkSizeMax, bulkRetries, bulkRetriesDelay);
+            this.buffer2 = new Buffer(countMax, sizeMax, bulkCountMax, bulkSizeMax, bulkRetries, bulkRetriesDelay);
             if (setDefaultUncaughtExceptionHandler) {
                 try {
                     Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
@@ -165,19 +155,15 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     final int bulkRetries = ElasticSearchAppender.this.bulkRetries;
                     final long bulkRetriesDelay = ElasticSearchAppender.this.bulkRetriesDelay;
                     final int lengthStringMax = ElasticSearchAppender.this.lengthStringMax;
-                    final int lengthLogTagValueMax = ElasticSearchAppender.this.lengthLogTagValueMax;
-                    final int lengthMessageMax = ElasticSearchAppender.this.lengthMessageMax;
-                    final int lengthStackTraceMax = ElasticSearchAppender.this.lengthStackTraceMax;
                     final boolean out = ElasticSearchAppender.this.out;
                     final boolean setDefaultUncaughtExceptionHandler = ElasticSearchAppender.this.setDefaultUncaughtExceptionHandler;
                     final RestHighLevelClient client = ElasticSearchAppender.this.client;
                     final Buffer buffer1 = ElasticSearchAppender.this.buffer1;
                     final Buffer buffer2 = ElasticSearchAppender.this.buffer2;
                     try {
-                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is started: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d lengthLogTagValueMax=%d lengthMessageMax=%d lengthStackTraceMax=%d out=%b setDefaultUncaughtExceptionHandler=%b",
+                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is started: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d out=%b setDefaultUncaughtExceptionHandler=%b",
                                                                                                         name, url, index, enable,
-                                                                                                        countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay,
-                                                                                                        lengthStringMax, lengthLogTagValueMax, lengthMessageMax, lengthStackTraceMax,
+                                                                                                        countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay, lengthStringMax,
                                                                                                         out, setDefaultUncaughtExceptionHandler));
                         long pt = System.currentTimeMillis();
                         while (enabled.get()) {
@@ -224,7 +210,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                             }
                         }
                         try {
-                            append(new InputLogEvent(false, totalCount, totalSize, lostCount.get(), lostSize.get()));
+                            append(new InputLogEvent(false, totalCount, totalSize, lostCount.get(), lostSize.get(), lengthStringMax));
                         } catch (Throwable e) {
                             ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                         }
@@ -241,10 +227,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
                             ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                         }
                     } finally {
-                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is finished: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d lengthLogTagValueMax=%d lengthMessageMax=%d lengthStackTraceMax=%d out=%b setDefaultUncaughtExceptionHandler=%b totalCount=%d totalSize=%d lostCount=%d lostSize=%d",
+                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is finished: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d out=%b setDefaultUncaughtExceptionHandler=%b totalCount=%d totalSize=%d lostCount=%d lostSize=%d",
                                                                                                         name, url, index, enable,
-                                                                                                        countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay,
-                                                                                                        lengthStringMax, lengthLogTagValueMax, lengthMessageMax, lengthStackTraceMax,
+                                                                                                        countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay, lengthStringMax,
                                                                                                         out, setDefaultUncaughtExceptionHandler,
                                                                                                         totalCount.get(), totalSize.get(), lostCount.get(), lostSize.get()));
                     }
@@ -269,11 +254,10 @@ public final class ElasticSearchAppender extends AbstractAppender {
             } catch (Exception e) {
                 ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
             }
-            append(new InputLogEvent(true, totalCount, totalSize, lostCount.get(), lostSize.get()));
-            ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is initialized: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d lengthLogTagValueMax=%d lengthMessageMax=%d lengthStackTraceMax=%d out=%b setDefaultUncaughtExceptionHandler=%b",
+            append(new InputLogEvent(true, totalCount, totalSize, lostCount.get(), lostSize.get(), lengthStringMax));
+            ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is initialized: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetries=%d bulkRetriesDelay=%d lengthStringMax=%d out=%b setDefaultUncaughtExceptionHandler=%b",
                                                                                             name, url, index, enable,
-                                                                                            countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay,
-                                                                                            lengthStringMax, lengthLogTagValueMax, lengthMessageMax, lengthStackTraceMax,
+                                                                                            countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetries, bulkRetriesDelay, lengthStringMax,
                                                                                             out, setDefaultUncaughtExceptionHandler));
         } else {
             this.client = null;
@@ -328,7 +312,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     }
                 }
             }
-            append(new InputLogEvent(event, lengthMax, totalCount, totalSize, lostCount.get(), lostSize.get()));
+            append(new InputLogEvent(event, totalCount, totalSize, lostCount.get(), lostSize.get(), lengthStringMax));
         }
     }
 
@@ -352,19 +336,33 @@ public final class ElasticSearchAppender extends AbstractAppender {
     public static ElasticSearchAppender createAppender(@PluginAttribute("name") String name,
                                                        @PluginAttribute("url") String url,
                                                        @PluginAttribute("index") String index,
+                                                       @PluginAttribute("enable") String enable,
                                                        @PluginAttribute("countMax") String countMax,
                                                        @PluginAttribute("sizeMax") String sizeMax,
-                                                       @PluginAttribute("lengthMax") String lengthMax,
+                                                       @PluginAttribute("bulkCountMax") String bulkCountMax,
+                                                       @PluginAttribute("bulkSizeMax") String bulkSizeMax,
                                                        @PluginAttribute("delayMax") String delayMax,
+                                                       @PluginAttribute("bulkRetries") String bulkRetries,
+                                                       @PluginAttribute("bulkRetriesDelay") String bulkRetriesDelay,
+                                                       @PluginAttribute("lengthStringMax") String lengthStringMax,
+                                                       @PluginAttribute("out") String out,
+                                                       @PluginAttribute("setDefaultUncaughtExceptionHandler") String setDefaultUncaughtExceptionHandler,
                                                        @PluginElement("Filter") Filter filter,
                                                        @PluginElement("Layout") Layout<? extends Serializable> layout) {
         return new ElasticSearchAppender((name != null) ? name : "elasticsearch",
                                          getProperty("log4j2.elasticsearch.url", "LOG4J2_ELASTICSEARCH_URL", url, null),
                                          getProperty("log4j2.elasticsearch.index", "LOG4J2_ELASTICSEARCH_INDEX", index, null),
+                                         Boolean.parseBoolean(getProperty("log4j2.elasticsearch.enable", "LOG4J2_ELASTICSEARCH_ENABLE", enable, "true")),
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.count.max", "LOG4J2_ELASTICSEARCH_COUNT_MAX", countMax, "10000")),
                                          Long.parseLong(getProperty("log4j2.elasticsearch.size.max", "LOG4J2_ELASTICSEARCH_SIZE_MAX", sizeMax, "5242880")),
-                                         Integer.parseInt(getProperty("log4j2.elasticsearch.length.max", "LOG4J2_ELASTICSEARCH_LENGTH_MAX", lengthMax, "4096")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.bulk.count.max", "LOG4J2_ELASTICSEARCH_BULK_COUNT_MAX", bulkCountMax, "4000")),
+                                         Long.parseLong(getProperty("log4j2.elasticsearch.bulk.size.max", "LOG4J2_ELASTICSEARCH_BULK_SIZE_MAX", bulkSizeMax, "2097152")),
                                          Long.parseLong(getProperty("log4j2.elasticsearch.delay.max", "LOG4J2_ELASTICSEARCH_DELAY_MAX", delayMax, "60")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.bulk.retries", "LOG4J2_ELASTICSEARCH_BULK_RETRIES", bulkRetries, "5")),
+                                         Long.parseLong(getProperty("log4j2.elasticsearch.bulk.retries.delay", "LOG4J2_ELASTICSEARCH_BULK_RETRIES_DELAY", bulkRetriesDelay, "5")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.length.string.max", "LOG4J2_ELASTICSEARCH_LENGTH_STRING_MAX", lengthStringMax, "65536")),
+                                         Boolean.parseBoolean(getProperty("log4j2.elasticsearch.out", "LOG4J2_ELASTICSEARCH_OUT", out, "true")),
+                                         Boolean.parseBoolean(getProperty("log4j2.elasticsearch.set.default.uncaught.exception.handler", "LOG4J2_ELASTICSEARCH_SET_DEFAULT_UNCAUGHT_EXCEPTION_HANDLER", setDefaultUncaughtExceptionHandler, "true")),
                                          filter,
                                          layout);
     }

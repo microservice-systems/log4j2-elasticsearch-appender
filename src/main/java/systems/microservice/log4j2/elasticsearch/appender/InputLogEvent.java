@@ -46,7 +46,12 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
     public final long time;
     public final int size;
 
-    public InputLogEvent(boolean start, AtomicLong totalCount, AtomicLong totalSize, long lostCount, long lostSize) {
+    public InputLogEvent(boolean start,
+                         AtomicLong totalCount,
+                         AtomicLong totalSize,
+                         long lostCount,
+                         long lostSize,
+                         int lengthStringMax) {
         super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
 
         this.time = start ? ElasticSearchAppender.PROCESS_START_TIME : System.currentTimeMillis();
@@ -69,20 +74,20 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             if (!start) {
                 cb.timeField("process.finish.time", time);
             }
-            addField(cb, "process.cmdline", Util.loadString(String.format("/proc/%d/cmdline", ElasticSearchAppender.PROCESS_ID), "unknown"), 65536);
-            addField(cb, "process.io", Util.loadString(String.format("/proc/%d/io", ElasticSearchAppender.PROCESS_ID), "unknown"), 65536);
-            addField(cb, "process.limits", Util.loadString(String.format("/proc/%d/limits", ElasticSearchAppender.PROCESS_ID), "unknown"), 65536);
-            addField(cb, "process.mounts", Util.loadString(String.format("/proc/%d/mounts", ElasticSearchAppender.PROCESS_ID), "unknown"), 65536);
-            addField(cb, "process.net.dev", Util.loadString(String.format("/proc/%d/net/dev", ElasticSearchAppender.PROCESS_ID), "unknown"), 65536);
-            addField(cb, "process.net.protocols", Util.loadString(String.format("/proc/%d/net/protocols", ElasticSearchAppender.PROCESS_ID), "unknown"), 65536);
+            addField(cb, "process.cmdline", Util.loadString(String.format("/proc/%d/cmdline", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+            addField(cb, "process.io", Util.loadString(String.format("/proc/%d/io", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+            addField(cb, "process.limits", Util.loadString(String.format("/proc/%d/limits", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+            addField(cb, "process.mounts", Util.loadString(String.format("/proc/%d/mounts", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+            addField(cb, "process.net.dev", Util.loadString(String.format("/proc/%d/net/dev", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+            addField(cb, "process.net.protocols", Util.loadString(String.format("/proc/%d/net/protocols", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
             for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
-                cb.field(e.getKey(), e.getValue());
+                addField(cb, e.getKey(), e.getValue(), lengthStringMax);
             }
             cb.field("host.name", ElasticSearchAppender.HOST_NAME);
             cb.field("host.ip", ElasticSearchAppender.HOST_IP);
             cb.field("logger", ElasticSearchAppender.class.getName());
             cb.field("thread.id", t.getId());
-            addField(cb, "thread.name", t.getName(), 256);
+            addField(cb, "thread.name", t.getName(), lengthStringMax);
             cb.field("thread.priority", t.getPriority());
             cb.field("level", "INFO");
             if (start) {
@@ -90,8 +95,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             } else {
                 cb.field("message", "Goodbye World!");
             }
-            cb.field("environment.variables", ElasticSearchAppender.ENVIRONMENT_VARIABLES);
-            cb.field("system.properties", ElasticSearchAppender.SYSTEM_PROPERTIES);
+            addField(cb, "environment.variables", ElasticSearchAppender.ENVIRONMENT_VARIABLES, lengthStringMax);
+            addField(cb, "system.properties", ElasticSearchAppender.SYSTEM_PROPERTIES, lengthStringMax);
             cb.flush();
             this.size = buf.size() + SIZE_OVERHEAD;
             cb.field("size", size);
@@ -106,7 +111,12 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         }
     }
 
-    public InputLogEvent(LogEvent event, int lengthMax, AtomicLong totalCount, AtomicLong totalSize, long lostCount, long lostSize) {
+    public InputLogEvent(LogEvent event,
+                         AtomicLong totalCount,
+                         AtomicLong totalSize,
+                         long lostCount,
+                         long lostSize,
+                         int lengthStringMax) {
         super(null, new UUID(mostSigBits, leastSigBits.incrementAndGet()).toString());
 
         this.time = event.getTimeMillis();
@@ -114,7 +124,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Throwable ex = event.getThrown();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 512 : 1024);
+            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 768 : 4096);
             XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
@@ -123,37 +133,37 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
             cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
             for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
-                cb.field(e.getKey(), e.getValue());
+                addField(cb, e.getKey(), e.getValue(), lengthStringMax);
             }
             cb.field("host.name", ElasticSearchAppender.HOST_NAME);
             cb.field("host.ip", ElasticSearchAppender.HOST_IP);
-            addField(cb, "logger", event.getLoggerFqcn(), 256);
+            addField(cb, "logger", event.getLoggerName(), lengthStringMax);
             cb.field("thread.id", event.getThreadId());
-            addField(cb, "thread.name", event.getThreadName(), 256);
+            addField(cb, "thread.name", event.getThreadName(), lengthStringMax);
             cb.field("thread.priority", event.getThreadPriority());
             Level l = event.getLevel();
             if (l != null) {
-                addField(cb, "level", l.toString(), 32);
+                addField(cb, "level", l.toString(), lengthStringMax);
             } else {
                 cb.field("level", "INFO");
             }
             Message m = event.getMessage();
             if (m != null) {
-                addField(cb, "message", m.getFormattedMessage(), lengthMax);
+                addField(cb, "message", m.getFormattedMessage(), lengthStringMax);
             }
             StackTraceElement ste = event.getSource();
             if (ste != null) {
-                addField(cb, "src.file", ste.getFileName(), 256);
-                addField(cb, "src.class", ste.getClassName(), 256);
-                addField(cb, "src.method", ste.getMethodName(), 256);
+                addField(cb, "src.file", ste.getFileName(), lengthStringMax);
+                addField(cb, "src.class", ste.getClassName(), lengthStringMax);
+                addField(cb, "src.method", ste.getMethodName(), lengthStringMax);
                 cb.field("src.line", ste.getLineNumber());
             }
             if (ex != null) {
-                addField(cb, "exception.class", ex.getClass().getName(), 256);
-                addField(cb, "exception.message", ex.getMessage(), lengthMax);
-                try (StringBuilderWriter sbw = new StringBuilderWriter(1024)) {
+                addField(cb, "exception.class", ex.getClass().getName(), lengthStringMax);
+                addField(cb, "exception.message", ex.getMessage(), lengthStringMax);
+                try (StringBuilderWriter sbw = new StringBuilderWriter(4096)) {
                     ex.printStackTrace(new PrintWriter(sbw, false));
-                    addField(cb, "exception.stacktrace", sbw.toString(), lengthMax);
+                    addField(cb, "exception.stacktrace", sbw.toString(), lengthStringMax);
                 }
                 Throwable[] sex = ex.getSuppressed();
                 if (sex != null) {
@@ -161,13 +171,13 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                 }
                 Throwable cex = ex.getCause();
                 if (cex != null) {
-                    addField(cb, "exception.cause.class", cex.getClass().getName(), 256);
-                    addField(cb, "exception.cause.message", cex.getMessage(), lengthMax);
+                    addField(cb, "exception.cause.class", cex.getClass().getName(), lengthStringMax);
+                    addField(cb, "exception.cause.message", cex.getMessage(), lengthStringMax);
                 }
             }
             Marker mrk = event.getMarker();
             if (mrk != null) {
-                addField(cb, "marker.name", mrk.getName(), 256);
+                addField(cb, "marker.name", mrk.getName(), lengthStringMax);
                 cb.field("marker.parents", mrk.hasParents());
             }
             ReadOnlyStringMap ctx = event.getContextData();
@@ -175,12 +185,12 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                 try {
                     ctx.forEach((k, v) -> {
                         if ((k != null) && (v != null)) {
-                            addField(cb, "ctx." + k, v.toString(), 256);
+                            addField(cb, "ctx." + k, v.toString(), lengthStringMax);
                         }
                     });
                 } catch (Exception e) {
-                    addField(cb, "ctx.exception.class", e.getClass().getName(), 256);
-                    addField(cb, "ctx.exception.message", e.getMessage(), lengthMax);
+                    addField(cb, "ctx.exception.class", e.getClass().getName(), lengthStringMax);
+                    addField(cb, "ctx.exception.message", e.getMessage(), lengthStringMax);
                 }
             }
             cb.flush();

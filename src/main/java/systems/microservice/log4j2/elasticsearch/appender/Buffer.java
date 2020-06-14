@@ -38,24 +38,32 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.0
  */
 final class Buffer {
-    public static final int BULK_RETRIES = 5;
-    public static final long BULK_RETRIES_SPAN = 5000L;
-    public static final int BULK_COUNT_MAX = 4000;
-    public static final long BULK_SIZE_MAX = 2097152L;
-
     private final ThreadSection section = new ThreadSection(true);
     private final AtomicInteger count = new AtomicInteger(0);
     private final AtomicLong size = new AtomicLong(0L);
     private final int countMax;
     private final long sizeMax;
+    private final int bulkCountMax;
+    private final long bulkSizeMax;
+    private final int bulkRetries;
+    private final long bulkRetriesDelay;
     private final ConcurrentLinkedQueue<InputLogEvent> eventsQueue;
     private final ArrayList<InputLogEvent> eventsList;
 
-    public Buffer(int countMax, long sizeMax) {
+    public Buffer(int countMax,
+                  long sizeMax,
+                  int bulkCountMax,
+                  long bulkSizeMax,
+                  int bulkRetries,
+                  long bulkRetriesDelay) {
         this.countMax = countMax;
         this.sizeMax = sizeMax;
+        this.bulkCountMax = bulkCountMax;
+        this.bulkSizeMax = bulkSizeMax;
+        this.bulkRetries = bulkRetries;
+        this.bulkRetriesDelay = bulkRetriesDelay;
         this.eventsQueue = new ConcurrentLinkedQueue<>();
-        this.eventsList = new ArrayList<>(countMax + 1);
+        this.eventsList = new ArrayList<>(countMax);
     }
 
     public boolean isReady() {
@@ -97,7 +105,7 @@ final class Buffer {
                     }
                     Collections.sort(eventsList);
                     Index idx = null;
-                    long bc = 0L;
+                    int bc = 0;
                     long bs = 0L;
                     BulkRequest r = new BulkRequest(null);
                     for (InputLogEvent e : eventsList) {
@@ -105,10 +113,10 @@ final class Buffer {
                             idx = new Index(index, e);
                         }
                         e.index(idx.name);
-                        if ((bc >= BULK_COUNT_MAX) || (bs >= BULK_SIZE_MAX)) {
+                        if ((bc >= bulkCountMax) || (bs >= bulkSizeMax)) {
                             putEvents(enabled, client, url, index, lostCount, lostSize, r);
                             r = new BulkRequest(null);
-                            bc = 0L;
+                            bc = 0;
                             bs = 0L;
                         }
                         r.add(e);
