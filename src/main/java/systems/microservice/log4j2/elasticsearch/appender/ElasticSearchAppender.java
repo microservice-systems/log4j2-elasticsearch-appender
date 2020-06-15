@@ -336,13 +336,10 @@ public final class ElasticSearchAppender extends AbstractAppender {
     @Override
     public void append(LogEvent event) {
         if (enabled.get()) {
-            StackTraceElement ste = event.getSource();
-            if (ste != null) {
-                String cn = ste.getClassName();
-                if (cn != null) {
-                    if (cn.startsWith("org.apache.http.")) {
-                        return;
-                    }
+            String l = event.getLoggerName();
+            if (l != null) {
+                if (l.startsWith("org.apache.http.")) {
+                    return;
                 }
             }
             append(new InputLogEvent(event, totalCount, totalSize, lostCount.get(), lostSize.get(), lengthStringMax));
