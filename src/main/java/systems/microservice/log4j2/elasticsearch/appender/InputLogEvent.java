@@ -30,6 +30,7 @@ import org.elasticsearch.common.xcontent.XContentFactory;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -126,8 +127,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("appender.length.string.max", lengthStringMax);
             cb.field("appender.out", out);
             cb.field("appender.set.default.uncaught.exception.handler", setDefaultUncaughtExceptionHandler);
-            addField(cb, "environment.variables", ElasticSearchAppender.ENVIRONMENT_VARIABLES, lengthStringMax);
-            addField(cb, "system.properties", ElasticSearchAppender.SYSTEM_PROPERTIES, lengthStringMax);
+            addField(cb, "environment.variables", createEnvironmentVariables(), lengthStringMax);
+            addField(cb, "system.properties", createSystemProperties(), lengthStringMax);
             cb.flush();
             this.size = buf.size() + SIZE_OVERHEAD;
             cb.field("size", size);
@@ -259,5 +260,41 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    private static String createEnvironmentVariables() {
+        Map<String, String> evs = System.getenv();
+        StringBuilder sb = new StringBuilder(32768);
+        for (Map.Entry<String, String> e : evs.entrySet()) {
+            String k = e.getKey();
+            String v = e.getValue();
+            if ((k != null) && (v != null)) {
+                sb.append(k);
+                sb.append("=");
+                sb.append(v);
+                sb.append("\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String createSystemProperties() {
+        Properties sps = System.getProperties();
+        StringBuilder sb = new StringBuilder(32768);
+        for (Map.Entry<Object, Object> e : sps.entrySet()) {
+            Object k = e.getKey();
+            Object v = e.getValue();
+            if ((k != null) && (v != null)) {
+                if ((k instanceof String) && (v instanceof String)) {
+                    String ks = (String) k;
+                    String vs = (String) v;
+                    sb.append(ks);
+                    sb.append("=");
+                    sb.append(vs);
+                    sb.append("\n");
+                }
+            }
+        }
+        return sb.toString();
     }
 }
