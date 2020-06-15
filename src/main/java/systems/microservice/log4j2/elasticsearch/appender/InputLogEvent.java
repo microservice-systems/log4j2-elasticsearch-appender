@@ -62,8 +62,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          int bulkCountMax,
                          long bulkSizeMax,
                          long delayMax,
-                         int bulkRetries,
-                         long bulkRetriesDelay,
+                         int bulkRetryCount,
+                         long bulkRetryDelay,
                          int lengthStringMax,
                          boolean out,
                          boolean setDefaultUncaughtExceptionHandler) {
@@ -121,8 +121,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("appender.bulk.count.max", bulkCountMax);
             cb.field("appender.bulk.size.max", bulkSizeMax);
             cb.field("appender.delay.max", delayMax);
-            cb.field("appender.bulk.retries", bulkRetries);
-            cb.field("appender.bulk.retries.delay", bulkRetriesDelay);
+            cb.field("appender.bulk.retry.count", bulkRetryCount);
+            cb.field("appender.bulk.retry.delay", bulkRetryDelay);
             cb.field("appender.length.string.max", lengthStringMax);
             cb.field("appender.out", out);
             cb.field("appender.set.default.uncaught.exception.handler", setDefaultUncaughtExceptionHandler);

@@ -45,8 +45,8 @@ final class Buffer {
     private final long sizeMax;
     private final int bulkCountMax;
     private final long bulkSizeMax;
-    private final int bulkRetries;
-    private final long bulkRetriesDelay;
+    private final int bulkRetryCount;
+    private final long bulkRetryDelay;
     private final ConcurrentLinkedQueue<InputLogEvent> eventsQueue;
     private final ArrayList<InputLogEvent> eventsList;
 
@@ -54,14 +54,14 @@ final class Buffer {
                   long sizeMax,
                   int bulkCountMax,
                   long bulkSizeMax,
-                  int bulkRetries,
-                  long bulkRetriesDelay) {
+                  int bulkRetryCount,
+                  long bulkRetryDelay) {
         this.countMax = countMax;
         this.sizeMax = sizeMax;
         this.bulkCountMax = bulkCountMax;
         this.bulkSizeMax = bulkSizeMax;
-        this.bulkRetries = bulkRetries;
-        this.bulkRetriesDelay = bulkRetriesDelay;
+        this.bulkRetryCount = bulkRetryCount;
+        this.bulkRetryDelay = bulkRetryDelay;
         this.eventsQueue = new ConcurrentLinkedQueue<>();
         this.eventsList = new ArrayList<>(countMax);
     }
@@ -152,7 +152,7 @@ final class Buffer {
                            BulkRequest request) {
         int fc = 0;
         long fs = 0L;
-        for (int i = 0; (request.numberOfActions() > 0) && (i < bulkRetries); ++i) {
+        for (int i = 0; (request.numberOfActions() > 0) && (i < bulkRetryCount); ++i) {
             BulkResponse rsp = null;
             try {
                 rsp = client.bulk(request, RequestOptions.DEFAULT);
@@ -160,7 +160,7 @@ final class Buffer {
                 ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s) is failed with %s: %s", i, request.numberOfActions(), url, index, e.getClass().getSimpleName(), e.getMessage()));
                 if (enabled.get()) {
                     try {
-                        Thread.sleep(bulkRetriesDelay);
+                        Thread.sleep(bulkRetryDelay);
                     } catch (InterruptedException ex) {
                     }
                 }
@@ -193,7 +193,7 @@ final class Buffer {
             }
             if (enabled.get()) {
                 try {
-                    Thread.sleep(bulkRetriesDelay);
+                    Thread.sleep(bulkRetryDelay);
                 } catch (InterruptedException ex) {
                 }
             }
