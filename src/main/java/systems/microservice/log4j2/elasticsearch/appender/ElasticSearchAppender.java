@@ -549,9 +549,20 @@ public final class ElasticSearchAppender extends AbstractAppender {
     }
 
     private static RestHighLevelClient createClient(String url) {
+        if (url == null) {
+            throw new IllegalArgumentException("url can't be null");
+        }
+        String[] us = url.split(";");
+        if (us.length <= 0) {
+            throw new IllegalArgumentException("url should contain at least one URL to ElasticSearch host");
+        }
         try {
-            URL u = new URL(url);
-            return new RestHighLevelClient(RestClient.builder(new HttpHost(u.getHost(), u.getPort(), u.getProtocol())));
+            HttpHost[] hs = new HttpHost[us.length];
+            for (int i = 0, ci = us.length; i < ci; ++i) {
+                URL ur = new URL(us[i]);
+                hs[i] = new HttpHost(ur.getHost(), ur.getPort(), ur.getProtocol());
+            }
+            return new RestHighLevelClient(RestClient.builder(hs));
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException(e);
         }
