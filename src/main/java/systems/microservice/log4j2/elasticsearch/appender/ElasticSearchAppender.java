@@ -354,12 +354,14 @@ public final class ElasticSearchAppender extends AbstractAppender {
             if (!buffer1.append(event)) {
                 if (!buffer2.append(event)) {
                     lostCount.incrementAndGet();
+                    lostSize.addAndGet(event.size);
                 }
             }
         } else {
             if (!buffer2.append(event)) {
                 if (!buffer1.append(event)) {
                     lostCount.incrementAndGet();
+                    lostSize.addAndGet(event.size);
                 }
             }
         }
@@ -521,7 +523,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         try {
             HttpHost[] hs = new HttpHost[us.length];
             for (int i = 0, ci = us.length; i < ci; ++i) {
-                URL ur = new URL(us[i]);
+                URL ur = new URL(us[i].trim());
                 hs[i] = new HttpHost(ur.getHost(), ur.getPort(), ur.getProtocol());
             }
             return new RestHighLevelClient(RestClient.builder(hs));
