@@ -342,6 +342,12 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     return;
                 }
             }
+            String t = event.getThreadName();
+            if (t != null) {
+                if (t.startsWith("log4j2-elasticsearch-appender-flush-")) {
+                    return;
+                }
+            }
             append(new InputLogEvent(event, totalCount, totalSize, lostCount.get(), lostSize.get(), lengthStringMax));
         }
     }
