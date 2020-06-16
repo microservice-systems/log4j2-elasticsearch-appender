@@ -156,7 +156,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Throwable ex = event.getThrown();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 768 : 4096);
+            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 1024 : 4096);
             XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
@@ -187,10 +187,10 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             }
             StackTraceElement ste = event.getSource();
             if (ste != null) {
-                addField(cb, "src.file", ste.getFileName(), lengthStringMax);
-                addField(cb, "src.class", ste.getClassName(), lengthStringMax);
-                addField(cb, "src.method", ste.getMethodName(), lengthStringMax);
-                cb.field("src.line", ste.getLineNumber());
+                addField(cb, "source.file", ste.getFileName(), lengthStringMax);
+                addField(cb, "source.class", ste.getClassName(), lengthStringMax);
+                addField(cb, "source.method", ste.getMethodName(), lengthStringMax);
+                cb.field("source.line", ste.getLineNumber());
             }
             if (ex != null) {
                 addField(cb, "exception.class", ex.getClass().getName(), lengthStringMax);
@@ -216,16 +216,11 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             }
             ReadOnlyStringMap ctx = event.getContextData();
             if (ctx != null) {
-                try {
-                    ctx.forEach((k, v) -> {
-                        if ((k != null) && (v != null)) {
-                            addField(cb, "ctx." + k, v.toString(), lengthStringMax);
-                        }
-                    });
-                } catch (Exception e) {
-                    addField(cb, "ctx.exception.class", e.getClass().getName(), lengthStringMax);
-                    addField(cb, "ctx.exception.message", e.getMessage(), lengthStringMax);
-                }
+                ctx.forEach((k, v) -> {
+                    if ((k != null) && (v != null)) {
+                        addField(cb, "context." + k, v.toString(), lengthStringMax);
+                    }
+                });
             }
             cb.flush();
             this.size = buf.size() + SIZE_OVERHEAD;

@@ -199,7 +199,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                     ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                                 }
                             }
-                            if (!Util.delay(enabled, 1000L, 200L)) {
+                            if (!Util.delay(enabled, 1000L, 500L)) {
                                 break;
                             }
                         }
