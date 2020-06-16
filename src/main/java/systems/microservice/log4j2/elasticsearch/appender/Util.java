@@ -20,6 +20,7 @@ package systems.microservice.log4j2.elasticsearch.appender;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
 /**
@@ -31,6 +32,22 @@ public final class Util {
     public static final Charset CHARSET_UTF8 = Charset.forName("UTF-8");
 
     private Util() {
+    }
+
+    public static boolean delay(AtomicBoolean enabled, long delay, long sleep) {
+        long pt = System.currentTimeMillis();
+        while (enabled.get()) {
+            long t = System.currentTimeMillis();
+            if (t >= pt + delay) {
+                return true;
+            } else {
+                try {
+                    Thread.sleep(sleep);
+                } catch (InterruptedException e) {
+                }
+            }
+        }
+        return false;
     }
 
     public static String cut(String value, int lengthMax) {
