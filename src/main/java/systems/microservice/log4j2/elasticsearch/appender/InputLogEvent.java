@@ -127,8 +127,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("appender.length.string.max", lengthStringMax);
             cb.field("appender.out", out);
             cb.field("appender.set.default.uncaught.exception.handler", setDefaultUncaughtExceptionHandler);
-            addField(cb, "environment.variables", createEnvironmentVariables(), lengthStringMax);
-            addField(cb, "system.properties", createSystemProperties(), lengthStringMax);
+            addField(cb, "variables", createVariables(), lengthStringMax);
+            addField(cb, "properties", createProperties(), lengthStringMax);
             cb.flush();
             this.size = buf.size() + SIZE_OVERHEAD;
             cb.field("size", size);
@@ -257,7 +257,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         }
     }
 
-    private static String createEnvironmentVariables() {
+    private static String createVariables() {
         Map<String, String> evs = System.getenv();
         StringBuilder sb = new StringBuilder(32768);
         for (Map.Entry<String, String> e : evs.entrySet()) {
@@ -273,7 +273,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         return sb.toString();
     }
 
-    private static String createSystemProperties() {
+    private static String createProperties() {
         Properties sps = System.getProperties();
         StringBuilder sb = new StringBuilder(32768);
         for (Map.Entry<Object, Object> e : sps.entrySet()) {
