@@ -23,6 +23,7 @@ import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.rest.RestStatus;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -217,9 +218,28 @@ final class Buffer {
                             return;
                         } else {
                             BulkItemResponse[] irs = rsp.getItems();
-                            HashSet<String> fids = new HashSet<>(Math.max(fc, 16));
+                            HashSet<String> fids = new HashSet<>(irs.length);
                             for (BulkItemResponse ir : irs) {
-                                fids.add(ir.getId());
+                                String rsn = "NULL";
+                                int rsc = -1;
+                                RestStatus rs = ir.status();
+                                if (rs != null) {
+                                    rsn = rs.toString();
+                                    rsc = rs.getStatus();
+                                }
+                                String ri = ir.getIndex();
+                                String rid = ir.getId();
+                                BulkItemResponse.Failure rf = ir.getFailure();
+                                if (rf != null) {
+                                    fids.add(rid);
+                                    if (debug) {
+                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("                [%s(%d)]: index='%s' id='%s' message='%s'", rsn, rsc, ri, rid, rf.getMessage()));
+                                    }
+                                } else {
+                                    if (debug) {
+                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("                [%s(%d)]: index='%s' id='%s'", rsn, rsc, ri, rid));
+                                    }
+                                }
                             }
                             BulkRequest r = new BulkRequest(null);
                             List<DocWriteRequest<?>> es = request.requests();
