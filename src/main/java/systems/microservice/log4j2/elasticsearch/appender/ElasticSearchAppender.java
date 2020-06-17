@@ -105,9 +105,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
         this.sizeMax = sizeMax;
         this.bulkCountMax = bulkCountMax;
         this.bulkSizeMax = bulkSizeMax;
-        this.delayMax = delayMax * 1000L;
+        this.delayMax = delayMax;
         this.bulkRetryCount = bulkRetryCount;
-        this.bulkRetryDelay = bulkRetryDelay * 1000L;
+        this.bulkRetryDelay = bulkRetryDelay;
         this.lengthStringMax = lengthStringMax;
         this.out = out;
         this.debug = debug;
@@ -203,7 +203,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                     ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                                 }
                             }
-                            if (!Util.delay(enabled, 1000L, 500L)) {
+                            if (!Util.delay(enabled, 1000L, 600L)) {
                                 break;
                             }
                         }
@@ -304,8 +304,76 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return enabled.get();
     }
 
+    public long getTotalCount() {
+        return totalCount.get();
+    }
+
+    public long getTotalSize() {
+        return totalSize.get();
+    }
+
+    public long getLostCount() {
+        return lostCount.get();
+    }
+
+    public long getLostSize() {
+        return lostSize.get();
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
     public String getIndex() {
         return index;
+    }
+
+    public boolean isEnable() {
+        return enable;
+    }
+
+    public int getCountMax() {
+        return countMax;
+    }
+
+    public long getSizeMax() {
+        return sizeMax;
+    }
+
+    public int getBulkCountMax() {
+        return bulkCountMax;
+    }
+
+    public long getBulkSizeMax() {
+        return bulkSizeMax;
+    }
+
+    public long getDelayMax() {
+        return delayMax;
+    }
+
+    public int getBulkRetryCount() {
+        return bulkRetryCount;
+    }
+
+    public long getBulkRetryDelay() {
+        return bulkRetryDelay;
+    }
+
+    public int getLengthStringMax() {
+        return lengthStringMax;
+    }
+
+    public boolean isOut() {
+        return out;
+    }
+
+    public boolean isDebug() {
+        return debug;
+    }
+
+    public boolean isSetDefaultUncaughtExceptionHandler() {
+        return setDefaultUncaughtExceptionHandler;
     }
 
     @Override
@@ -395,9 +463,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                          Long.parseLong(getProperty("log4j2.elasticsearch.size.max", "LOG4J2_ELASTICSEARCH_SIZE_MAX", sizeMax, "5242880")),
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.bulk.count.max", "LOG4J2_ELASTICSEARCH_BULK_COUNT_MAX", bulkCountMax, "4000")),
                                          Long.parseLong(getProperty("log4j2.elasticsearch.bulk.size.max", "LOG4J2_ELASTICSEARCH_BULK_SIZE_MAX", bulkSizeMax, "2097152")),
-                                         Long.parseLong(getProperty("log4j2.elasticsearch.delay.max", "LOG4J2_ELASTICSEARCH_DELAY_MAX", delayMax, "60")),
+                                         Long.parseLong(getProperty("log4j2.elasticsearch.delay.max", "LOG4J2_ELASTICSEARCH_DELAY_MAX", delayMax, "60")) * 1000L,
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.bulk.retry.count", "LOG4J2_ELASTICSEARCH_BULK_RETRY_COUNT", bulkRetryCount, "5")),
-                                         Long.parseLong(getProperty("log4j2.elasticsearch.bulk.retry.delay", "LOG4J2_ELASTICSEARCH_BULK_RETRY_DELAY", bulkRetryDelay, "5")),
+                                         Long.parseLong(getProperty("log4j2.elasticsearch.bulk.retry.delay", "LOG4J2_ELASTICSEARCH_BULK_RETRY_DELAY", bulkRetryDelay, "5")) * 1000L,
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.length.string.max", "LOG4J2_ELASTICSEARCH_LENGTH_STRING_MAX", lengthStringMax, "65536")),
                                          Boolean.parseBoolean(getProperty("log4j2.elasticsearch.out", "LOG4J2_ELASTICSEARCH_OUT", out, "true")),
                                          Boolean.parseBoolean(getProperty("log4j2.elasticsearch.debug", "LOG4J2_ELASTICSEARCH_DEBUG", debug, "false")),

@@ -188,7 +188,7 @@ final class Buffer {
             try {
                 for (int i = 0; (request.numberOfActions() > 0) && (i < bulkRetryCount); ++i) {
                     if (debug) {
-                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("            [BEGIN]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, i, fc, fs));
+                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("            [BEGIN]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
                     }
                     try {
                         BulkResponse rsp = null;
@@ -261,7 +261,7 @@ final class Buffer {
                         }
                     } finally {
                         if (debug) {
-                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("            [END]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, i, fc, fs));
+                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("            [END]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
                         }
                     }
                 }

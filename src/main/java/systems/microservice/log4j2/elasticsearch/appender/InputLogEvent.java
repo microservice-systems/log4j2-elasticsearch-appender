@@ -91,6 +91,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             if (!start) {
                 cb.timeField("process.finish.time", time);
             }
+            addField(cb, "process.variables", createProcessVariables(), lengthStringMax);
+            addField(cb, "process.properties", createProcessProperties(), lengthStringMax);
             addField(cb, "process.cmdline", Util.loadString(String.format("/proc/%d/cmdline", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
             addField(cb, "process.io", Util.loadString(String.format("/proc/%d/io", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
             addField(cb, "process.limits", Util.loadString(String.format("/proc/%d/limits", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
@@ -127,8 +129,6 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("appender.length.string.max", lengthStringMax);
             cb.field("appender.out", out);
             cb.field("appender.set.default.uncaught.exception.handler", setDefaultUncaughtExceptionHandler);
-            addField(cb, "variables", createVariables(), lengthStringMax);
-            addField(cb, "properties", createProperties(), lengthStringMax);
             cb.flush();
             this.size = buf.size() + SIZE_OVERHEAD;
             cb.field("size", size);
@@ -257,7 +257,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         }
     }
 
-    private static String createVariables() {
+    private static String createProcessVariables() {
         Map<String, String> evs = System.getenv();
         StringBuilder sb = new StringBuilder(32768);
         for (Map.Entry<String, String> e : evs.entrySet()) {
@@ -273,7 +273,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         return sb.toString();
     }
 
-    private static String createProperties() {
+    private static String createProcessProperties() {
         Properties sps = System.getProperties();
         StringBuilder sb = new StringBuilder(32768);
         for (Map.Entry<Object, Object> e : sps.entrySet()) {
