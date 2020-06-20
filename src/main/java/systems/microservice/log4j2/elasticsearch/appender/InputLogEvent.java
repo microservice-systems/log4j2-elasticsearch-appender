@@ -106,6 +106,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             } else {
                 cb.field("type", "FINISH");
             }
+            cb.field("language", "java");
             cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
             cb.field("process.uuid", InputLogEvent.PROCESS_UUID);
             cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
@@ -194,12 +195,13 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Throwable ex = event.getThrown();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 1024 : 8192);
+            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 1280 : 8192);
             XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
             cb.timeField("time", time);
             cb.field("type", (ex == null) ? "DEFAULT" : "EXCEPTION");
+            cb.field("language", "java");
             cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
             cb.field("process.uuid", InputLogEvent.PROCESS_UUID);
             cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
@@ -335,7 +337,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                         MEMORY_OBJECT_PENDING_FINALIZATION_COUNT.set(MEMORY_MX_BEAN.getObjectPendingFinalizationCount());
                         CLASS_COUNT_ACTIVE.set(CLASS_LOADING_MX_BEAN.getLoadedClassCount());
                         try {
-                            Thread.sleep(1000L);
+                            Thread.sleep(3000L);
                         } catch (InterruptedException e) {
                         }
                     } catch (Throwable e) {
