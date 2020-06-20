@@ -106,7 +106,7 @@ final class Buffer {
                       boolean out,
                       boolean debug) {
         if (debug) {
-            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("    [BEGIN]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
+            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("[BEGIN]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
                                                                              enabled.get(), client.toString(),
                                                                              name, url, index,
                                                                              buffer, lostCount.get(), lostSize.get(),
@@ -154,7 +154,7 @@ final class Buffer {
             }
         } finally {
             if (debug) {
-                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("    [END]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
+                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("[END]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
                                                                                  enabled.get(), client.toString(),
                                                                                  name, url, index,
                                                                                  buffer, lostCount.get(), lostSize.get(),
@@ -175,7 +175,7 @@ final class Buffer {
                            boolean debug,
                            BulkRequest request) {
         if (debug) {
-            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("        [BEGIN]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
+            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("  [BEGIN]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
                                                                              enabled.get(), client.toString(),
                                                                              name, url, index,
                                                                              buffer, lostCount.get(), lostSize.get(),
@@ -188,7 +188,7 @@ final class Buffer {
             try {
                 for (int i = 0; (request.numberOfActions() > 0) && (i < bulkRetryCount); ++i) {
                     if (debug) {
-                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("            [BEGIN]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
+                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("    [BEGIN]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
                     }
                     try {
                         BulkResponse rsp = null;
@@ -233,11 +233,11 @@ final class Buffer {
                                 if (rf != null) {
                                     fids.add(rid);
                                     if (debug) {
-                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("                [%s(%d)]: index='%s' id='%s' message='%s'", rsn, rsc, ri, rid, rf.getMessage()));
+                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("      [%s(%d)]: index='%s' id='%s' message='%s'", rsn, rsc, ri, rid, rf.getMessage()));
                                     }
                                 } else {
                                     if (debug) {
-                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("                [%s(%d)]: index='%s' id='%s'", rsn, rsc, ri, rid));
+                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("      [%s(%d)]: index='%s' id='%s'", rsn, rsc, ri, rid));
                                     }
                                 }
                             }
@@ -261,7 +261,7 @@ final class Buffer {
                         }
                     } finally {
                         if (debug) {
-                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("            [END]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
+                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("    [END]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
                         }
                     }
                 }
@@ -271,7 +271,7 @@ final class Buffer {
             }
         } finally {
             if (debug) {
-                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("        [END]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
+                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("  [END]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
                                                                                  enabled.get(), client.toString(),
                                                                                  name, url, index,
                                                                                  buffer, lostCount.get(), lostSize.get(),

@@ -99,11 +99,11 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             addField(cb, "process.mounts", Util.loadString(String.format("/proc/%d/mounts", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
             addField(cb, "process.net.dev", Util.loadString(String.format("/proc/%d/net/dev", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
             addField(cb, "process.net.protocols", Util.loadString(String.format("/proc/%d/net/protocols", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+            addField(cb, "host.name", ElasticSearchAppender.HOST_NAME, lengthStringMax);
+            addField(cb, "host.ip", ElasticSearchAppender.HOST_IP, lengthStringMax);
             for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
                 addField(cb, e.getKey(), e.getValue(), lengthStringMax);
             }
-            cb.field("host.name", ElasticSearchAppender.HOST_NAME);
-            cb.field("host.ip", ElasticSearchAppender.HOST_IP);
             cb.field("logger", ElasticSearchAppender.class.getName());
             cb.field("thread.id", t.getId());
             cb.field("thread.uuid", InputLogEvent.THREAD_UUID.get());
@@ -156,7 +156,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Throwable ex = event.getThrown();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 1024 : 4096);
+            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 1024 : 8192);
             XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
@@ -165,11 +165,11 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
             cb.field("process.uuid", InputLogEvent.PROCESS_UUID);
             cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
+            addField(cb, "host.name", ElasticSearchAppender.HOST_NAME, lengthStringMax);
+            addField(cb, "host.ip", ElasticSearchAppender.HOST_IP, lengthStringMax);
             for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
                 addField(cb, e.getKey(), e.getValue(), lengthStringMax);
             }
-            cb.field("host.name", ElasticSearchAppender.HOST_NAME);
-            cb.field("host.ip", ElasticSearchAppender.HOST_IP);
             addField(cb, "logger", event.getLoggerName(), lengthStringMax);
             cb.field("thread.id", event.getThreadId());
             cb.field("thread.uuid", InputLogEvent.THREAD_UUID.get());

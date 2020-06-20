@@ -50,9 +50,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
     public static final long PROCESS_ID = createProcessID();
     public static final UUID PROCESS_UUID = createProcessUUID();
     public static final long PROCESS_START_TIME = createProcessStartTime();
-    public static final Map<String, String> LOG_TAGS = createLogTags();
     public static final String HOST_NAME = createHostName();
     public static final String HOST_IP = createHostIP();
+    public static final Map<String, String> LOG_TAGS = createLogTags();
 
     private final AtomicBoolean enabled = new AtomicBoolean(false);
     private final AtomicBoolean flag = new AtomicBoolean(true);
@@ -97,6 +97,31 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                  Filter filter,
                                  Layout<? extends Serializable> layout) {
         super(name, filter, (layout != null) ? layout : PatternLayout.createDefaultLayout(), false, Property.EMPTY_ARRAY);
+
+        if (countMax < 1000) {
+            throw new IllegalArgumentException("Argument countMax can't be less than 1000");
+        }
+        if (sizeMax < 524288L) {
+            throw new IllegalArgumentException("Argument sizeMax can't be less than 524288");
+        }
+        if (bulkCountMax < 400) {
+            throw new IllegalArgumentException("Argument bulkCountMax can't be less than 400");
+        }
+        if (bulkSizeMax < 209715L) {
+            throw new IllegalArgumentException("Argument bulkSizeMax can't be less than 209715");
+        }
+        if (delayMax < 10000L) {
+            throw new IllegalArgumentException("Argument delayMax can't be less than 10 seconds");
+        }
+        if (bulkRetryCount < 1) {
+            throw new IllegalArgumentException("Argument bulkRetryCount can't be less than 1");
+        }
+        if (bulkRetryDelay < 1000L) {
+            throw new IllegalArgumentException("Argument bulkRetryDelay can't be less than 1 second");
+        }
+        if (lengthStringMax < 128) {
+            throw new IllegalArgumentException("Argument lengthStringMax can't be less than 128");
+        }
 
         this.url = url;
         this.index = index;
@@ -459,10 +484,10 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                          getProperty("log4j2.elasticsearch.url", "LOG4J2_ELASTICSEARCH_URL", url, null),
                                          getProperty("log4j2.elasticsearch.index", "LOG4J2_ELASTICSEARCH_INDEX", index, null),
                                          Boolean.parseBoolean(getProperty("log4j2.elasticsearch.enable", "LOG4J2_ELASTICSEARCH_ENABLE", enable, "true")),
-                                         Integer.parseInt(getProperty("log4j2.elasticsearch.count.max", "LOG4J2_ELASTICSEARCH_COUNT_MAX", countMax, "10000")),
-                                         Long.parseLong(getProperty("log4j2.elasticsearch.size.max", "LOG4J2_ELASTICSEARCH_SIZE_MAX", sizeMax, "5242880")),
-                                         Integer.parseInt(getProperty("log4j2.elasticsearch.bulk.count.max", "LOG4J2_ELASTICSEARCH_BULK_COUNT_MAX", bulkCountMax, "4000")),
-                                         Long.parseLong(getProperty("log4j2.elasticsearch.bulk.size.max", "LOG4J2_ELASTICSEARCH_BULK_SIZE_MAX", bulkSizeMax, "2097152")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.count.max", "LOG4J2_ELASTICSEARCH_COUNT_MAX", countMax, "20000")),
+                                         Long.parseLong(getProperty("log4j2.elasticsearch.size.max", "LOG4J2_ELASTICSEARCH_SIZE_MAX", sizeMax, "10485760")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.bulk.count.max", "LOG4J2_ELASTICSEARCH_BULK_COUNT_MAX", bulkCountMax, "8000")),
+                                         Long.parseLong(getProperty("log4j2.elasticsearch.bulk.size.max", "LOG4J2_ELASTICSEARCH_BULK_SIZE_MAX", bulkSizeMax, "4194304")),
                                          Long.parseLong(getProperty("log4j2.elasticsearch.delay.max", "LOG4J2_ELASTICSEARCH_DELAY_MAX", delayMax, "60")) * 1000L,
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.bulk.retry.count", "LOG4J2_ELASTICSEARCH_BULK_RETRY_COUNT", bulkRetryCount, "5")),
                                          Long.parseLong(getProperty("log4j2.elasticsearch.bulk.retry.delay", "LOG4J2_ELASTICSEARCH_BULK_RETRY_DELAY", bulkRetryDelay, "5")) * 1000L,
@@ -509,6 +534,22 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return ManagementFactory.getRuntimeMXBean().getStartTime();
     }
 
+    private static String createHostName() {
+        try {
+            return InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            return "unknown";
+        }
+    }
+
+    private static String createHostIP() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            return "unknown";
+        }
+    }
+
     private static Map<String, String> createLogTags() {
         final String PREFIX_EV = "LOGTAG_";
         final String PREFIX_SP = "logtag.";
@@ -539,22 +580,6 @@ public final class ElasticSearchAppender extends AbstractAppender {
             }
         }
         return Collections.unmodifiableMap(lts);
-    }
-
-    private static String createHostName() {
-        try {
-            return InetAddress.getLocalHost().getHostName();
-        } catch (UnknownHostException e) {
-            return "unknown";
-        }
-    }
-
-    private static String createHostIP() {
-        try {
-            return InetAddress.getLocalHost().getHostAddress();
-        } catch (UnknownHostException e) {
-            return "unknown";
-        }
     }
 
     private static String getProperty(String property, String variable, String value) {
