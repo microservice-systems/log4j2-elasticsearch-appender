@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="info">
 	<Appenders>
-        <ElasticSearch name="elasticsearch" url="http://localhost:31920" index="log4j2-test">
+        <ElasticSearch name="elasticsearch" url="http://localhost:31920" index="log4j2-test" debug="true">
         </ElasticSearch>
 	</Appenders>
 	<Loggers>
