@@ -106,7 +106,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             } else {
                 cb.field("type", "FINISH");
             }
-            cb.field("language", "java");
+            cb.field("language", "JAVA");
             cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
             cb.field("process.uuid", InputLogEvent.PROCESS_UUID);
             cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
@@ -201,7 +201,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
             cb.startObject();
             cb.timeField("time", time);
             cb.field("type", (ex == null) ? "DEFAULT" : "EXCEPTION");
-            cb.field("language", "java");
+            cb.field("language", "JAVA");
             cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
             cb.field("process.uuid", InputLogEvent.PROCESS_UUID);
             cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
