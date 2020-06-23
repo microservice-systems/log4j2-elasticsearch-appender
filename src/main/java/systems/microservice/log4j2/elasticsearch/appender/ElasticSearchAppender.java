@@ -70,6 +70,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
     private final long delayMax;
     private final int bulkRetryCount;
     private final long bulkRetryDelay;
+    private final int eventSizeStartFinish;
+    private final int eventSizeDefault;
+    private final int eventSizeException;
     private final int lengthStringMax;
     private final boolean out;
     private final boolean debug;
@@ -90,6 +93,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                  long delayMax,
                                  int bulkRetryCount,
                                  long bulkRetryDelay,
+                                 int eventSizeStartFinish,
+                                 int eventSizeDefault,
+                                 int eventSizeException,
                                  int lengthStringMax,
                                  boolean out,
                                  boolean debug,
@@ -119,6 +125,15 @@ public final class ElasticSearchAppender extends AbstractAppender {
         if (bulkRetryDelay < 1000L) {
             throw new IllegalArgumentException("Argument bulkRetryDelay can't be less than 1 second");
         }
+        if (eventSizeStartFinish < 256) {
+            throw new IllegalArgumentException("Argument eventSizeStartFinish can't be less than 256");
+        }
+        if (eventSizeDefault < 256) {
+            throw new IllegalArgumentException("Argument eventSizeDefault can't be less than 256");
+        }
+        if (eventSizeException < 256) {
+            throw new IllegalArgumentException("Argument eventSizeException can't be less than 256");
+        }
         if (lengthStringMax < 128) {
             throw new IllegalArgumentException("Argument lengthStringMax can't be less than 128");
         }
@@ -133,6 +148,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
         this.delayMax = delayMax;
         this.bulkRetryCount = bulkRetryCount;
         this.bulkRetryDelay = bulkRetryDelay;
+        this.eventSizeStartFinish = eventSizeStartFinish;
+        this.eventSizeDefault = eventSizeDefault;
+        this.eventSizeException = eventSizeException;
         this.lengthStringMax = lengthStringMax;
         this.out = out;
         this.debug = debug;
@@ -179,6 +197,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     final long delayMax = ElasticSearchAppender.this.delayMax;
                     final int bulkRetryCount = ElasticSearchAppender.this.bulkRetryCount;
                     final long bulkRetryDelay = ElasticSearchAppender.this.bulkRetryDelay;
+                    final int eventSizeStartFinish = ElasticSearchAppender.this.eventSizeStartFinish;
                     final int lengthStringMax = ElasticSearchAppender.this.lengthStringMax;
                     final boolean out = ElasticSearchAppender.this.out;
                     final boolean debug = ElasticSearchAppender.this.debug;
@@ -249,6 +268,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                                      delayMax,
                                                      bulkRetryCount,
                                                      bulkRetryDelay,
+                                                     eventSizeStartFinish,
                                                      lengthStringMax,
                                                      out,
                                                      setDefaultUncaughtExceptionHandler));
@@ -310,6 +330,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                      delayMax,
                                      bulkRetryCount,
                                      bulkRetryDelay,
+                                     eventSizeStartFinish,
                                      lengthStringMax,
                                      out,
                                      setDefaultUncaughtExceptionHandler));
@@ -385,6 +406,18 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return bulkRetryDelay;
     }
 
+    public int getEventSizeStartFinish() {
+        return eventSizeStartFinish;
+    }
+
+    public int getEventSizeDefault() {
+        return eventSizeDefault;
+    }
+
+    public int getEventSizeException() {
+        return eventSizeException;
+    }
+
     public int getLengthStringMax() {
         return lengthStringMax;
     }
@@ -440,7 +473,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     return;
                 }
             }
-            append(new InputLogEvent(event, totalCount, totalSize, lostCount.get(), lostSize.get(), lengthStringMax));
+            append(new InputLogEvent(event, totalCount, totalSize, lostCount.get(), lostSize.get(), eventSizeDefault, eventSizeException, lengthStringMax));
         }
     }
 
@@ -474,6 +507,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                                        @PluginAttribute("delayMax") String delayMax,
                                                        @PluginAttribute("bulkRetryCount") String bulkRetryCount,
                                                        @PluginAttribute("bulkRetryDelay") String bulkRetryDelay,
+                                                       @PluginAttribute("eventSizeStartFinish") String eventSizeStartFinish,
+                                                       @PluginAttribute("eventSizeDefault") String eventSizeDefault,
+                                                       @PluginAttribute("eventSizeException") String eventSizeException,
                                                        @PluginAttribute("lengthStringMax") String lengthStringMax,
                                                        @PluginAttribute("out") String out,
                                                        @PluginAttribute("debug") String debug,
@@ -491,6 +527,9 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                          Long.parseLong(getProperty("log4j2.elasticsearch.delay.max", "LOG4J2_ELASTICSEARCH_DELAY_MAX", delayMax, "60")) * 1000L,
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.bulk.retry.count", "LOG4J2_ELASTICSEARCH_BULK_RETRY_COUNT", bulkRetryCount, "5")),
                                          Long.parseLong(getProperty("log4j2.elasticsearch.bulk.retry.delay", "LOG4J2_ELASTICSEARCH_BULK_RETRY_DELAY", bulkRetryDelay, "5")) * 1000L,
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.event.size.start.finish", "LOG4J2_ELASTICSEARCH_EVENT_SIZE_START_FINISH", eventSizeStartFinish, "65536")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.event.size.default", "LOG4J2_ELASTICSEARCH_EVENT_SIZE_DEFAULT", eventSizeDefault, "1536")),
+                                         Integer.parseInt(getProperty("log4j2.elasticsearch.event.size.exception", "LOG4J2_ELASTICSEARCH_EVENT_SIZE_EXCEPTION", eventSizeException, "8192")),
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.length.string.max", "LOG4J2_ELASTICSEARCH_LENGTH_STRING_MAX", lengthStringMax, "65536")),
                                          Boolean.parseBoolean(getProperty("log4j2.elasticsearch.out", "LOG4J2_ELASTICSEARCH_OUT", out, "true")),
                                          Boolean.parseBoolean(getProperty("log4j2.elasticsearch.debug", "LOG4J2_ELASTICSEARCH_DEBUG", debug, "false")),

@@ -86,6 +86,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          long delayMax,
                          int bulkRetryCount,
                          long bulkRetryDelay,
+                         int eventSizeStartFinish,
                          int lengthStringMax,
                          boolean out,
                          boolean setDefaultUncaughtExceptionHandler) {
@@ -96,7 +97,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Thread t = Thread.currentThread();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream(65536);
+            ByteArrayOutputStream buf = new ByteArrayOutputStream(eventSizeStartFinish);
             XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
@@ -187,6 +188,8 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          AtomicLong totalSize,
                          long lostCount,
                          long lostSize,
+                         int eventSizeDefault,
+                         int eventSizeException,
                          int lengthStringMax) {
         super(null, new UUID(MOST_SIG_BITS, EVENT_LEAST_SIG_BITS.getAndIncrement()).toString());
 
@@ -195,7 +198,7 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
 
         try {
             Throwable ex = event.getThrown();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? 1280 : 8192);
+            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? eventSizeDefault : eventSizeException);
             XContentBuilder cb = XContentFactory.smileBuilder(buf);
             cb.humanReadable(true);
             cb.startObject();
