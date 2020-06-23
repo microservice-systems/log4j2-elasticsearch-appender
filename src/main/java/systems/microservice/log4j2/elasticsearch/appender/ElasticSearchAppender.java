@@ -198,6 +198,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     final int bulkRetryCount = ElasticSearchAppender.this.bulkRetryCount;
                     final long bulkRetryDelay = ElasticSearchAppender.this.bulkRetryDelay;
                     final int eventSizeStartFinish = ElasticSearchAppender.this.eventSizeStartFinish;
+                    final int eventSizeDefault = ElasticSearchAppender.this.eventSizeDefault;
+                    final int eventSizeException = ElasticSearchAppender.this.eventSizeException;
                     final int lengthStringMax = ElasticSearchAppender.this.lengthStringMax;
                     final boolean out = ElasticSearchAppender.this.out;
                     final boolean debug = ElasticSearchAppender.this.debug;
@@ -269,6 +271,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                                      bulkRetryCount,
                                                      bulkRetryDelay,
                                                      eventSizeStartFinish,
+                                                     eventSizeDefault,
+                                                     eventSizeException,
                                                      lengthStringMax,
                                                      out,
                                                      setDefaultUncaughtExceptionHandler));
@@ -331,6 +335,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                      bulkRetryCount,
                                      bulkRetryDelay,
                                      eventSizeStartFinish,
+                                     eventSizeDefault,
+                                     eventSizeException,
                                      lengthStringMax,
                                      out,
                                      setDefaultUncaughtExceptionHandler));
