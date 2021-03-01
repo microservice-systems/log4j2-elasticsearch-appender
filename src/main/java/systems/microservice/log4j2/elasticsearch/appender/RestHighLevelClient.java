@@ -17,5 +17,67 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
-public class RestHighLevelClient {
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.*;
+
+/**
+ * @author Dmitry Kotlyarov
+ * @since 2.0
+ */
+final class RestHighLevelClient {
+    private final URL[] urls;
+
+    public RestHighLevelClient(URL[] urls) {
+        this.urls = urls;
+    }
+
+    private BulkResponse bulk(URL url, BulkRequest request) throws IOException {
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setConnectTimeout(30000);
+        conn.connect();
+        try {
+            List<InputLogEvent> es = request.events();
+            try (OutputStream out = conn.getOutputStream()) {
+                for (InputLogEvent e : es) {
+                    ByteArrayOutputStream d = e.data;
+                    out.write(d.buffer(), 0, d.size());
+                }
+            }
+            try (InputStream in = conn.getInputStream()) {
+                return JsonUtil.readBytes(in, BulkResponse.class);
+            }
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    public BulkResponse bulk(BulkRequest request) throws Exception {
+        ArrayList<URL> us = new ArrayList<>(urls.length);
+        Collections.addAll(us, urls);
+        Random rnd = new Random();
+        Exception e = null;
+        while (!us.isEmpty()) {
+            int i = rnd.nextInt(us.size());
+            URL u = us.remove(i);
+            try {
+                return bulk(u, request);
+            } catch (Exception ex) {
+                e = ex;
+            }
+        }
+        if (e == null) {
+            BulkResponse r = new BulkResponse();
+            r.took = 0L;
+            r.errors = false;
+            r.items = new LinkedList<>();
+            return r;
+        } else {
+            throw e;
+        }
+    }
 }

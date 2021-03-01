@@ -17,15 +17,14 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
+import com.fasterxml.jackson.dataformat.smile.SmileFactory;
+import com.fasterxml.jackson.dataformat.smile.SmileGenerator;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.util.StringBuilderWriter;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
-import org.elasticsearch.action.update.UpdateRequest;
-import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -40,9 +39,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Dmitry Kotlyarov
  * @since 1.0
  */
-final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEvent> {
+final class InputLogEvent implements Comparable<InputLogEvent> {
     private static final long MB = 1048576L;
     private static final int SIZE_OVERHEAD = 64;
+    private static final SmileFactory SMILE_FACTORY = new SmileFactory();
     private static final String PROCESS_UUID = ElasticSearchAppender.PROCESS_UUID.toString();
     private static final long MOST_SIG_BITS = ElasticSearchAppender.PROCESS_UUID.getMostSignificantBits();
     private static final AtomicLong THREAD_LEAST_SIG_BITS = new AtomicLong(0L);
@@ -67,7 +67,9 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
     private static final AtomicInteger CLASS_COUNT_ACTIVE;
     private static final Thread MONITOR_THREAD;
 
+    public final String id;
     public final long time;
+    public final ByteArrayOutputStream data;
     public final int size;
 
     public InputLogEvent(boolean start,
@@ -92,97 +94,94 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          int lengthStringMax,
                          boolean out,
                          boolean setDefaultUncaughtExceptionHandler) {
-        super(null, new UUID(MOST_SIG_BITS, EVENT_LEAST_SIG_BITS.getAndIncrement()).toString());
-
+        this.id = new UUID(MOST_SIG_BITS, EVENT_LEAST_SIG_BITS.getAndIncrement()).toString();
         this.time = start ? ElasticSearchAppender.PROCESS_START_TIME : System.currentTimeMillis();
-        this.docAsUpsert(true);
 
         try {
             Thread t = Thread.currentThread();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream(eventSizeStartFinish);
-            XContentBuilder cb = XContentFactory.smileBuilder(buf);
-            cb.humanReadable(true);
-            cb.startObject();
-            cb.timeField("time", time);
-            if (start) {
-                cb.field("type", "START");
-            } else {
-                cb.field("type", "FINISH");
+            this.data = new ByteArrayOutputStream(eventSizeStartFinish);
+            try (SmileGenerator gen = SMILE_FACTORY.createGenerator(this.data)) {
+                gen.writeStartObject();
+                gen.writeNumberField("time", time);
+                if (start) {
+                    gen.writeStringField("type", "START");
+                } else {
+                    gen.writeStringField("type", "FINISH");
+                }
+                gen.writeStringField("language", "JAVA");
+                gen.writeNumberField("process.id", ElasticSearchAppender.PROCESS_ID);
+                gen.writeStringField("process.uuid", InputLogEvent.PROCESS_UUID);
+                gen.writeNumberField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
+                if (!start) {
+                    gen.writeNumberField("process.finish.time", time);
+                }
+                addField(gen, "process.variables", createProcessVariables(), lengthStringMax);
+                addField(gen, "process.properties", createProcessProperties(), lengthStringMax);
+                addField(gen, "process.cmdline", Util.loadString(String.format("/proc/%d/cmdline", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.io", Util.loadString(String.format("/proc/%d/io", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.limits", Util.loadString(String.format("/proc/%d/limits", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.mounts", Util.loadString(String.format("/proc/%d/mounts", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.net.dev", Util.loadString(String.format("/proc/%d/net/dev", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.net.protocols", Util.loadString(String.format("/proc/%d/net/protocols", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "host.name", ElasticSearchAppender.HOST_NAME, lengthStringMax);
+                addField(gen, "host.ip", ElasticSearchAppender.HOST_IP, lengthStringMax);
+                for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
+                    addField(gen, e.getKey(), e.getValue(), lengthStringMax);
+                }
+                gen.writeStringField("logger", ElasticSearchAppender.class.getName());
+                gen.writeNumberField("thread.id", t.getId());
+                gen.writeStringField("thread.uuid", InputLogEvent.THREAD_UUID.get());
+                addField(gen, "thread.name", t.getName(), lengthStringMax);
+                gen.writeNumberField("thread.priority", t.getPriority());
+                gen.writeNumberField("thread.count.live", THREAD_COUNT_LIVE.get());
+                gen.writeNumberField("thread.count.daemon", THREAD_COUNT_DAEMON.get());
+                gen.writeNumberField("thread.count.peak", THREAD_COUNT_PEAK.get());
+                gen.writeNumberField("thread.count.total", THREAD_MX_BEAN.getTotalStartedThreadCount());
+                gen.writeNumberField("memory.heap.init", MEMORY_HEAP_INIT.get());
+                gen.writeNumberField("memory.heap.used", MEMORY_HEAP_USED.get());
+                gen.writeNumberField("memory.heap.committed", MEMORY_HEAP_COMMITTED.get());
+                gen.writeNumberField("memory.heap.max", MEMORY_HEAP_MAX.get());
+                gen.writeNumberField("memory.non.heap.init", MEMORY_NON_HEAP_INIT.get());
+                gen.writeNumberField("memory.non.heap.used", MEMORY_NON_HEAP_USED.get());
+                gen.writeNumberField("memory.non.heap.committed", MEMORY_NON_HEAP_COMMITTED.get());
+                gen.writeNumberField("memory.non.heap.max", MEMORY_NON_HEAP_MAX.get());
+                gen.writeNumberField("memory.object.pending.finalization.count", MEMORY_OBJECT_PENDING_FINALIZATION_COUNT.get());
+                gen.writeNumberField("class.count.active", CLASS_COUNT_ACTIVE.get());
+                gen.writeNumberField("class.count.loaded", CLASS_LOADING_MX_BEAN.getTotalLoadedClassCount());
+                gen.writeNumberField("class.count.unloaded", CLASS_LOADING_MX_BEAN.getUnloadedClassCount());
+                gen.writeNumberField("compilation.time.total", COMPILATION_MX_BEAN.getTotalCompilationTime());
+                gen.writeStringField("level", "INFO");
+                if (start) {
+                    gen.writeStringField("message", "Hello World!");
+                } else {
+                    gen.writeStringField("message", "Goodbye World!");
+                }
+                addField(gen, "appender.name", name, lengthStringMax);
+                addField(gen, "appender.url", url, lengthStringMax);
+                addField(gen, "appender.index", index, lengthStringMax);
+                gen.writeBooleanField("appender.enable", enable);
+                gen.writeNumberField("appender.count.max", countMax);
+                gen.writeNumberField("appender.size.max", sizeMax);
+                gen.writeNumberField("appender.bulk.count.max", bulkCountMax);
+                gen.writeNumberField("appender.bulk.size.max", bulkSizeMax);
+                gen.writeNumberField("appender.delay.max", delayMax);
+                gen.writeNumberField("appender.bulk.retry.count", bulkRetryCount);
+                gen.writeNumberField("appender.bulk.retry.delay", bulkRetryDelay);
+                gen.writeNumberField("appender.event.size.start.finish", eventSizeStartFinish);
+                gen.writeNumberField("appender.event.size.default", eventSizeDefault);
+                gen.writeNumberField("appender.event.size.exception", eventSizeException);
+                gen.writeNumberField("appender.length.string.max", lengthStringMax);
+                gen.writeBooleanField("appender.out", out);
+                gen.writeBooleanField("appender.set.default.uncaught.exception.handler", setDefaultUncaughtExceptionHandler);
+                gen.flush();
+                this.size = this.data.size() + SIZE_OVERHEAD;
+                gen.writeNumberField("size", size);
+                gen.writeNumberField("total.count", totalCount.incrementAndGet());
+                gen.writeNumberField("total.size", totalSize.addAndGet(size));
+                gen.writeNumberField("lost.count", lostCount);
+                gen.writeNumberField("lost.size", lostSize);
+                gen.writeEndObject();
             }
-            cb.field("language", "JAVA");
-            cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
-            cb.field("process.uuid", InputLogEvent.PROCESS_UUID);
-            cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
-            if (!start) {
-                cb.timeField("process.finish.time", time);
-            }
-            addField(cb, "process.variables", createProcessVariables(), lengthStringMax);
-            addField(cb, "process.properties", createProcessProperties(), lengthStringMax);
-            addField(cb, "process.cmdline", Util.loadString(String.format("/proc/%d/cmdline", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-            addField(cb, "process.io", Util.loadString(String.format("/proc/%d/io", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-            addField(cb, "process.limits", Util.loadString(String.format("/proc/%d/limits", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-            addField(cb, "process.mounts", Util.loadString(String.format("/proc/%d/mounts", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-            addField(cb, "process.net.dev", Util.loadString(String.format("/proc/%d/net/dev", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-            addField(cb, "process.net.protocols", Util.loadString(String.format("/proc/%d/net/protocols", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-            addField(cb, "host.name", ElasticSearchAppender.HOST_NAME, lengthStringMax);
-            addField(cb, "host.ip", ElasticSearchAppender.HOST_IP, lengthStringMax);
-            for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
-                addField(cb, e.getKey(), e.getValue(), lengthStringMax);
-            }
-            cb.field("logger", ElasticSearchAppender.class.getName());
-            cb.field("thread.id", t.getId());
-            cb.field("thread.uuid", InputLogEvent.THREAD_UUID.get());
-            addField(cb, "thread.name", t.getName(), lengthStringMax);
-            cb.field("thread.priority", t.getPriority());
-            cb.field("thread.count.live", THREAD_COUNT_LIVE.get());
-            cb.field("thread.count.daemon", THREAD_COUNT_DAEMON.get());
-            cb.field("thread.count.peak", THREAD_COUNT_PEAK.get());
-            cb.field("thread.count.total", THREAD_MX_BEAN.getTotalStartedThreadCount());
-            cb.field("memory.heap.init", MEMORY_HEAP_INIT.get());
-            cb.field("memory.heap.used", MEMORY_HEAP_USED.get());
-            cb.field("memory.heap.committed", MEMORY_HEAP_COMMITTED.get());
-            cb.field("memory.heap.max", MEMORY_HEAP_MAX.get());
-            cb.field("memory.non.heap.init", MEMORY_NON_HEAP_INIT.get());
-            cb.field("memory.non.heap.used", MEMORY_NON_HEAP_USED.get());
-            cb.field("memory.non.heap.committed", MEMORY_NON_HEAP_COMMITTED.get());
-            cb.field("memory.non.heap.max", MEMORY_NON_HEAP_MAX.get());
-            cb.field("memory.object.pending.finalization.count", MEMORY_OBJECT_PENDING_FINALIZATION_COUNT.get());
-            cb.field("class.count.active", CLASS_COUNT_ACTIVE.get());
-            cb.field("class.count.loaded", CLASS_LOADING_MX_BEAN.getTotalLoadedClassCount());
-            cb.field("class.count.unloaded", CLASS_LOADING_MX_BEAN.getUnloadedClassCount());
-            cb.field("compilation.time.total", COMPILATION_MX_BEAN.getTotalCompilationTime());
-            cb.field("level", "INFO");
-            if (start) {
-                cb.field("message", "Hello World!");
-            } else {
-                cb.field("message", "Goodbye World!");
-            }
-            addField(cb, "appender.name", name, lengthStringMax);
-            addField(cb, "appender.url", url, lengthStringMax);
-            addField(cb, "appender.index", index, lengthStringMax);
-            cb.field("appender.enable", enable);
-            cb.field("appender.count.max", countMax);
-            cb.field("appender.size.max", sizeMax);
-            cb.field("appender.bulk.count.max", bulkCountMax);
-            cb.field("appender.bulk.size.max", bulkSizeMax);
-            cb.field("appender.delay.max", delayMax);
-            cb.field("appender.bulk.retry.count", bulkRetryCount);
-            cb.field("appender.bulk.retry.delay", bulkRetryDelay);
-            cb.field("appender.event.size.start.finish", eventSizeStartFinish);
-            cb.field("appender.event.size.default", eventSizeDefault);
-            cb.field("appender.event.size.exception", eventSizeException);
-            cb.field("appender.length.string.max", lengthStringMax);
-            cb.field("appender.out", out);
-            cb.field("appender.set.default.uncaught.exception.handler", setDefaultUncaughtExceptionHandler);
-            cb.flush();
-            this.size = buf.size() + SIZE_OVERHEAD;
-            cb.field("size", size);
-            cb.field("total.count", totalCount.incrementAndGet());
-            cb.field("total.size", totalSize.addAndGet(size));
-            cb.field("lost.count", lostCount);
-            cb.field("lost.size", lostSize);
-            cb.endObject();
-            this.doc(cb);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -196,105 +195,105 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
                          int eventSizeDefault,
                          int eventSizeException,
                          int lengthStringMax) {
-        super(null, new UUID(MOST_SIG_BITS, EVENT_LEAST_SIG_BITS.getAndIncrement()).toString());
-
+        this.id = new UUID(MOST_SIG_BITS, EVENT_LEAST_SIG_BITS.getAndIncrement()).toString();
         this.time = event.getTimeMillis();
-        this.docAsUpsert(true);
 
         try {
             Throwable ex = event.getThrown();
-            ByteArrayOutputStream buf = new ByteArrayOutputStream((ex == null) ? eventSizeDefault : eventSizeException);
-            XContentBuilder cb = XContentFactory.smileBuilder(buf);
-            cb.humanReadable(true);
-            cb.startObject();
-            cb.timeField("time", time);
-            cb.field("type", (ex == null) ? "DEFAULT" : "EXCEPTION");
-            cb.field("language", "JAVA");
-            cb.field("process.id", ElasticSearchAppender.PROCESS_ID);
-            cb.field("process.uuid", InputLogEvent.PROCESS_UUID);
-            cb.timeField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
-            addField(cb, "host.name", ElasticSearchAppender.HOST_NAME, lengthStringMax);
-            addField(cb, "host.ip", ElasticSearchAppender.HOST_IP, lengthStringMax);
-            for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
-                addField(cb, e.getKey(), e.getValue(), lengthStringMax);
-            }
-            addField(cb, "logger", event.getLoggerName(), lengthStringMax);
-            cb.field("thread.id", event.getThreadId());
-            cb.field("thread.uuid", InputLogEvent.THREAD_UUID.get());
-            addField(cb, "thread.name", event.getThreadName(), lengthStringMax);
-            cb.field("thread.priority", event.getThreadPriority());
-            cb.field("thread.count.live", THREAD_COUNT_LIVE.get());
-            cb.field("thread.count.daemon", THREAD_COUNT_DAEMON.get());
-            cb.field("thread.count.peak", THREAD_COUNT_PEAK.get());
-            cb.field("memory.heap.init", MEMORY_HEAP_INIT.get());
-            cb.field("memory.heap.used", MEMORY_HEAP_USED.get());
-            cb.field("memory.heap.committed", MEMORY_HEAP_COMMITTED.get());
-            cb.field("memory.heap.max", MEMORY_HEAP_MAX.get());
-            cb.field("memory.non.heap.init", MEMORY_NON_HEAP_INIT.get());
-            cb.field("memory.non.heap.used", MEMORY_NON_HEAP_USED.get());
-            cb.field("memory.non.heap.committed", MEMORY_NON_HEAP_COMMITTED.get());
-            cb.field("memory.non.heap.max", MEMORY_NON_HEAP_MAX.get());
-            cb.field("memory.object.pending.finalization.count", MEMORY_OBJECT_PENDING_FINALIZATION_COUNT.get());
-            cb.field("class.count.active", CLASS_COUNT_ACTIVE.get());
-            Level l = event.getLevel();
-            if (l != null) {
-                addField(cb, "level", l.toString(), lengthStringMax);
-            } else {
-                cb.field("level", "INFO");
-            }
-            Message m = event.getMessage();
-            if (m != null) {
-                addField(cb, "message", m.getFormattedMessage(), lengthStringMax);
-            }
-            StackTraceElement ste = event.getSource();
-            if (ste != null) {
-                addField(cb, "source.file", ste.getFileName(), lengthStringMax);
-                addField(cb, "source.class", ste.getClassName(), lengthStringMax);
-                addField(cb, "source.method", ste.getMethodName(), lengthStringMax);
-                cb.field("source.line", ste.getLineNumber());
-            }
-            if (ex != null) {
-                addField(cb, "exception.class", ex.getClass().getName(), lengthStringMax);
-                addField(cb, "exception.message", ex.getMessage(), lengthStringMax);
-                try (StringBuilderWriter sbw = new StringBuilderWriter(4096)) {
-                    ex.printStackTrace(new PrintWriter(sbw, false));
-                    addField(cb, "exception.stacktrace", sbw.toString(), lengthStringMax);
+            this.data = new ByteArrayOutputStream((ex == null) ? eventSizeDefault : eventSizeException);
+            try (SmileGenerator gen = SMILE_FACTORY.createGenerator(this.data)) {
+                gen.writeStartObject();
+                gen.writeNumberField("time", time);
+                gen.writeStringField("type", (ex == null) ? "DEFAULT" : "EXCEPTION");
+                gen.writeStringField("language", "JAVA");
+                gen.writeNumberField("process.id", ElasticSearchAppender.PROCESS_ID);
+                gen.writeStringField("process.uuid", InputLogEvent.PROCESS_UUID);
+                gen.writeNumberField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
+                addField(gen, "host.name", ElasticSearchAppender.HOST_NAME, lengthStringMax);
+                addField(gen, "host.ip", ElasticSearchAppender.HOST_IP, lengthStringMax);
+                for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
+                    addField(gen, e.getKey(), e.getValue(), lengthStringMax);
                 }
-                Throwable[] sex = ex.getSuppressed();
-                if (sex != null) {
-                    cb.field("exception.suppressed.count", sex.length);
+                addField(gen, "logger", event.getLoggerName(), lengthStringMax);
+                gen.writeNumberField("thread.id", event.getThreadId());
+                gen.writeStringField("thread.uuid", InputLogEvent.THREAD_UUID.get());
+                addField(gen, "thread.name", event.getThreadName(), lengthStringMax);
+                gen.writeNumberField("thread.priority", event.getThreadPriority());
+                gen.writeNumberField("thread.count.live", THREAD_COUNT_LIVE.get());
+                gen.writeNumberField("thread.count.daemon", THREAD_COUNT_DAEMON.get());
+                gen.writeNumberField("thread.count.peak", THREAD_COUNT_PEAK.get());
+                gen.writeNumberField("memory.heap.init", MEMORY_HEAP_INIT.get());
+                gen.writeNumberField("memory.heap.used", MEMORY_HEAP_USED.get());
+                gen.writeNumberField("memory.heap.committed", MEMORY_HEAP_COMMITTED.get());
+                gen.writeNumberField("memory.heap.max", MEMORY_HEAP_MAX.get());
+                gen.writeNumberField("memory.non.heap.init", MEMORY_NON_HEAP_INIT.get());
+                gen.writeNumberField("memory.non.heap.used", MEMORY_NON_HEAP_USED.get());
+                gen.writeNumberField("memory.non.heap.committed", MEMORY_NON_HEAP_COMMITTED.get());
+                gen.writeNumberField("memory.non.heap.max", MEMORY_NON_HEAP_MAX.get());
+                gen.writeNumberField("memory.object.pending.finalization.count", MEMORY_OBJECT_PENDING_FINALIZATION_COUNT.get());
+                gen.writeNumberField("class.count.active", CLASS_COUNT_ACTIVE.get());
+                Level l = event.getLevel();
+                if (l != null) {
+                    addField(gen, "level", l.toString(), lengthStringMax);
+                } else {
+                    gen.writeStringField("level", "INFO");
                 }
-                Throwable cex = ex.getCause();
-                if (cex != null) {
-                    addField(cb, "exception.cause.class", cex.getClass().getName(), lengthStringMax);
-                    addField(cb, "exception.cause.message", cex.getMessage(), lengthStringMax);
+                Message m = event.getMessage();
+                if (m != null) {
+                    addField(gen, "message", m.getFormattedMessage(), lengthStringMax);
                 }
-            }
-            Marker mrk = event.getMarker();
-            if (mrk != null) {
-                addField(cb, "marker.name", mrk.getName(), lengthStringMax);
-                cb.field("marker.parents", mrk.hasParents());
-            }
-            ReadOnlyStringMap ctx = event.getContextData();
-            if (ctx != null) {
-                ctx.forEach((k, v) -> {
-                    if ((k != null) && (v != null)) {
-                        addField(cb, "context." + k, v.toString(), lengthStringMax);
+                StackTraceElement ste = event.getSource();
+                if (ste != null) {
+                    addField(gen, "source.file", ste.getFileName(), lengthStringMax);
+                    addField(gen, "source.class", ste.getClassName(), lengthStringMax);
+                    addField(gen, "source.method", ste.getMethodName(), lengthStringMax);
+                    gen.writeNumberField("source.line", ste.getLineNumber());
+                }
+                if (ex != null) {
+                    addField(gen, "exception.class", ex.getClass().getName(), lengthStringMax);
+                    addField(gen, "exception.message", ex.getMessage(), lengthStringMax);
+                    try (StringBuilderWriter sbw = new StringBuilderWriter(4096)) {
+                        ex.printStackTrace(new PrintWriter(sbw, false));
+                        addField(gen, "exception.stacktrace", sbw.toString(), lengthStringMax);
                     }
-                });
+                    Throwable[] sex = ex.getSuppressed();
+                    if (sex != null) {
+                        gen.writeNumberField("exception.suppressed.count", sex.length);
+                    }
+                    Throwable cex = ex.getCause();
+                    if (cex != null) {
+                        addField(gen, "exception.cause.class", cex.getClass().getName(), lengthStringMax);
+                        addField(gen, "exception.cause.message", cex.getMessage(), lengthStringMax);
+                    }
+                }
+                Marker mrk = event.getMarker();
+                if (mrk != null) {
+                    addField(gen, "marker.name", mrk.getName(), lengthStringMax);
+                    gen.writeBooleanField("marker.parents", mrk.hasParents());
+                }
+                ReadOnlyStringMap ctx = event.getContextData();
+                if (ctx != null) {
+                    ctx.forEach((k, v) -> {
+                        if ((k != null) && (v != null)) {
+                            addField(gen, "context." + k, v.toString(), lengthStringMax);
+                        }
+                    });
+                }
+                gen.flush();
+                this.size = this.data.size() + SIZE_OVERHEAD;
+                gen.writeNumberField("size", size);
+                gen.writeNumberField("total.count", totalCount.incrementAndGet());
+                gen.writeNumberField("total.size", totalSize.addAndGet(size));
+                gen.writeNumberField("lost.count", lostCount);
+                gen.writeNumberField("lost.size", lostSize);
+                gen.writeEndObject();
             }
-            cb.flush();
-            this.size = buf.size() + SIZE_OVERHEAD;
-            cb.field("size", size);
-            cb.field("total.count", totalCount.incrementAndGet());
-            cb.field("total.size", totalSize.addAndGet(size));
-            cb.field("lost.count", lostCount);
-            cb.field("lost.size", lostSize);
-            cb.endObject();
-            this.doc(cb);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void create(String index) {
     }
 
     @Override
@@ -357,10 +356,10 @@ final class InputLogEvent extends UpdateRequest implements Comparable<InputLogEv
         MONITOR_THREAD.start();
     }
 
-    private static void addField(XContentBuilder builder, String name, String value, int lengthMax) {
+    private static void addField(SmileGenerator generator, String name, String value, int lengthMax) {
         if ((name != null) && (value != null)) {
             try {
-                builder.field(name, Util.cut(value, lengthMax));
+                generator.writeStringField(name, Util.cut(value, lengthMax));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

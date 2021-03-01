@@ -17,14 +17,6 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
-import org.elasticsearch.action.DocWriteRequest;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.rest.RestStatus;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -125,15 +117,15 @@ final class Buffer {
                         Index idx = null;
                         int bc = 0;
                         long bs = 0L;
-                        BulkRequest r = new BulkRequest(null);
+                        BulkRequest r = new BulkRequest(bulkCountMax);
                         for (InputLogEvent e : eventsList) {
                             if ((idx == null) || !idx.contains(e)) {
                                 idx = new Index(index, e);
                             }
-                            e.index(idx.name);
+                            e.create(idx.name);
                             if ((bc >= bulkCountMax) || (bs >= bulkSizeMax)) {
                                 putEvents(enabled, client, name, url, index, buffer, lostCount, lostSize, out, debug, r);
-                                r = new BulkRequest(null);
+                                r = new BulkRequest(bulkCountMax);
                                 bc = 0;
                                 bs = 0L;
                             }
@@ -193,17 +185,14 @@ final class Buffer {
                     try {
                         BulkResponse rsp = null;
                         try {
-                            rsp = client.bulk(request, RequestOptions.DEFAULT);
+                            rsp = client.bulk(request);
                         } catch (Exception ex) {
                             fc = 0;
                             fs = 0L;
-                            List<DocWriteRequest<?>> es = request.requests();
-                            for (DocWriteRequest<?> e : es) {
-                                if (e instanceof InputLogEvent) {
-                                    InputLogEvent ile = (InputLogEvent) e;
-                                    fc++;
-                                    fs += ile.size;
-                                }
+                            List<InputLogEvent> es = request.events();
+                            for (InputLogEvent e : es) {
+                                fc++;
+                                fs += e.size;
                             }
                             ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s) is failed with %s: %s", i, request.numberOfActions(), name, url, index, ex.getClass().getSimpleName(), ex.getMessage()));
                             if (Util.delay(enabled, bulkRetryDelay, 200L)) {
@@ -214,43 +203,30 @@ final class Buffer {
                         }
                         fc = 0;
                         fs = 0L;
-                        if (!rsp.hasFailures()) {
+                        if (!rsp.errors) {
                             return;
                         } else {
-                            BulkItemResponse[] irs = rsp.getItems();
-                            HashSet<String> fids = new HashSet<>(irs.length);
-                            for (BulkItemResponse ir : irs) {
-                                String rsn = "NULL";
-                                int rsc = -1;
-                                RestStatus rs = ir.status();
-                                if (rs != null) {
-                                    rsn = rs.toString();
-                                    rsc = rs.getStatus();
-                                }
-                                String ri = ir.getIndex();
-                                String rid = ir.getId();
-                                BulkItemResponse.Failure rf = ir.getFailure();
-                                if (rf != null) {
-                                    fids.add(rid);
+                            List<BulkResponse.Item> irs = rsp.items;
+                            HashSet<String> fids = new HashSet<>(irs.size());
+                            for (BulkResponse.Item ir : irs) {
+                                if ((ir.create != null) && (ir.create.error != null)) {
+                                    fids.add(ir.create.id);
                                     if (debug) {
-                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("      [%s(%d)]: index='%s' id='%s' message='%s'", rsn, rsc, ri, rid, rf.getMessage()));
+                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("      [ERROR]: %s", JsonUtil.toString(ir)));
                                     }
                                 } else {
                                     if (debug) {
-                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("      [%s(%d)]: index='%s' id='%s'", rsn, rsc, ri, rid));
+                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("      [OK]: %s", JsonUtil.toString(ir)));
                                     }
                                 }
                             }
-                            BulkRequest r = new BulkRequest(null);
-                            List<DocWriteRequest<?>> es = request.requests();
-                            for (DocWriteRequest<?> e : es) {
-                                if (fids.contains(e.id())) {
-                                    if (e instanceof InputLogEvent) {
-                                        InputLogEvent ile = (InputLogEvent) e;
-                                        r.add(ile);
-                                        fc++;
-                                        fs += ile.size;
-                                    }
+                            BulkRequest r = new BulkRequest(bulkCountMax);
+                            List<InputLogEvent> es = request.events();
+                            for (InputLogEvent e : es) {
+                                if (fids.contains(e.id)) {
+                                    r.add(e);
+                                    fc++;
+                                    fs += e.size;
                                 }
                             }
                             ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s) contains %d failed events of size %d", i, request.numberOfActions(), name, url, index, fc, fs));

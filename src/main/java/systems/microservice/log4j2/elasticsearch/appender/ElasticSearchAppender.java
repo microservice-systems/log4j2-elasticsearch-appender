@@ -17,7 +17,6 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
-import org.apache.http.HttpHost;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.Filter;
@@ -30,8 +29,6 @@ import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
 
 import java.io.Serializable;
 import java.lang.management.ManagementFactory;
@@ -663,12 +660,11 @@ public final class ElasticSearchAppender extends AbstractAppender {
             throw new IllegalArgumentException("url should contain at least one URL to ElasticSearch host");
         }
         try {
-            HttpHost[] hs = new HttpHost[us.length];
+            URL[] hs = new URL[us.length];
             for (int i = 0, ci = us.length; i < ci; ++i) {
-                URL ur = new URL(us[i].trim());
-                hs[i] = new HttpHost(ur.getHost(), ur.getPort(), ur.getProtocol());
+                hs[i] = new URL(us[i].trim() + "/_bulk");
             }
-            return new RestHighLevelClient(RestClient.builder(hs));
+            return new RestHighLevelClient(hs);
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException(e);
         }

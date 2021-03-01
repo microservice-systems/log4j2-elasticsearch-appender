@@ -17,10 +17,6 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
-import org.elasticsearch.common.bytes.BytesArray;
-import org.elasticsearch.common.bytes.BytesReference;
-import org.elasticsearch.common.io.stream.BytesStream;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
@@ -29,7 +25,7 @@ import java.util.Arrays;
  * @author Dmitry Kotlyarov
  * @since 1.0
  */
-final class ByteArrayOutputStream extends BytesStream {
+final class ByteArrayOutputStream extends OutputStream {
     private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     private byte buf[];
@@ -96,6 +92,10 @@ final class ByteArrayOutputStream extends BytesStream {
         return Arrays.copyOf(buf, count);
     }
 
+    public byte[] buffer() {
+        return buf;
+    }
+
     public int size() {
         return count;
     }
@@ -103,22 +103,6 @@ final class ByteArrayOutputStream extends BytesStream {
     public void close() throws IOException {
     }
 
-    @Override
-    public BytesReference bytes() {
-        return new BytesArray(buf, 0, count);
-    }
-
-    @Override
-    public void writeByte(byte b) throws IOException {
-        write(b);
-    }
-
-    @Override
-    public void writeBytes(byte[] b, int offset, int length) throws IOException {
-        write(b, offset, length);
-    }
-
-    @Override
     public void flush() throws IOException {
     }
 }

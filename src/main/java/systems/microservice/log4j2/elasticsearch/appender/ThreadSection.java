@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Dmitry Kotlyarov
  * @since 1.0
  */
-public final class ThreadSection {
+final class ThreadSection {
     private final AtomicBoolean enabled;
     private final AtomicLong threads = new AtomicLong(0L);
 
