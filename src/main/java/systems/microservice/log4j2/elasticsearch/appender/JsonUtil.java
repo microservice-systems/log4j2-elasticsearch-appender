@@ -30,8 +30,6 @@ import java.io.OutputStream;
  * @since 2.0
  */
 final class JsonUtil {
-    public static final String APPLICATION_JSON = "application/json";
-
     private static final JsonFactory factory = new JsonFactory();
     private static final ObjectMapper mapper = new ObjectMapper(factory);
 

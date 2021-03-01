@@ -39,6 +39,11 @@ final class RestHighLevelClient {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setConnectTimeout(30000);
+        conn.setUseCaches(false);
+        conn.setDoOutput(true);
+        conn.setDoInput(true);
+        conn.setRequestProperty("Content-Type", "application/smile");
+        conn.setRequestProperty("Accept", "application/json");
         conn.connect();
         try {
             List<InputLogEvent> es = request.events();
