@@ -71,6 +71,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
     public final long time;
     public final ByteArrayOutputStream data;
     public final int size;
+    public String index = null;
 
     public InputLogEvent(boolean start,
                          AtomicLong totalCount,
@@ -291,9 +292,6 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public void create(String index) {
     }
 
     @Override

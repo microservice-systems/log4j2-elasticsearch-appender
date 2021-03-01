@@ -17,6 +17,9 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
+import com.fasterxml.jackson.dataformat.smile.SmileFactory;
+import com.fasterxml.jackson.dataformat.smile.SmileGenerator;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,6 +32,8 @@ import java.util.*;
  * @since 2.0
  */
 final class RestHighLevelClient {
+    private static final SmileFactory SMILE_FACTORY = new SmileFactory();
+
     private final URL[] urls;
 
     public RestHighLevelClient(URL[] urls) {
@@ -48,9 +53,19 @@ final class RestHighLevelClient {
         try {
             List<InputLogEvent> es = request.events();
             try (OutputStream out = conn.getOutputStream()) {
-                for (InputLogEvent e : es) {
-                    ByteArrayOutputStream d = e.data;
-                    out.write(d.buffer(), 0, d.size());
+                try (SmileGenerator gen = SMILE_FACTORY.createGenerator(out)) {
+                    for (InputLogEvent e : es) {
+                        gen.writeStartObject(); {
+                            gen.writeFieldName("create");
+                            gen.writeStartObject(); {
+                                gen.writeStringField("_index", e.index);
+                                gen.writeStringField("_id", e.id);
+                            } gen.writeEndObject();
+                        } gen.writeEndObject();
+                        gen.flush();
+                        ByteArrayOutputStream d = e.data;
+                        out.write(d.buffer(), 0, d.size());
+                    }
                 }
             }
             try (InputStream in = conn.getInputStream()) {

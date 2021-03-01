@@ -122,7 +122,7 @@ final class Buffer {
                             if ((idx == null) || !idx.contains(e)) {
                                 idx = new Index(index, e);
                             }
-                            e.create(idx.name);
+                            e.index = idx.name;
                             if ((bc >= bulkCountMax) || (bs >= bulkSizeMax)) {
                                 putEvents(enabled, client, name, url, index, buffer, lostCount, lostSize, out, debug, r);
                                 r = new BulkRequest(bulkCountMax);
