@@ -63,8 +63,10 @@ final class RestHighLevelClient {
                             } gen.writeEndObject();
                         } gen.writeEndObject();
                         gen.flush();
+                        out.write(0xFF);
                         ByteArrayOutputStream d = e.data;
                         out.write(d.buffer(), 0, d.size());
+                        out.write(0xFF);
                     }
                 }
             }
