@@ -17,6 +17,8 @@
 
 package systems.microservice.log4j2.elasticsearch.appender;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.dataformat.smile.SmileConstants;
 import com.fasterxml.jackson.dataformat.smile.SmileFactory;
 import com.fasterxml.jackson.dataformat.smile.SmileGenerator;
 
@@ -53,8 +55,9 @@ final class RestHighLevelClient {
         try {
             List<InputLogEvent> es = request.events();
             try (OutputStream out = conn.getOutputStream()) {
-                try (SmileGenerator gen = SMILE_FACTORY.createGenerator(out)) {
-                    for (InputLogEvent e : es) {
+                for (InputLogEvent e : es) {
+                    try (SmileGenerator gen = SMILE_FACTORY.createGenerator(out)) {
+                        gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
                         gen.writeStartObject(); {
                             gen.writeFieldName("create");
                             gen.writeStartObject(); {
@@ -63,11 +66,11 @@ final class RestHighLevelClient {
                             } gen.writeEndObject();
                         } gen.writeEndObject();
                         gen.flush();
-                        out.write(0xFF);
-                        ByteArrayOutputStream d = e.data;
-                        out.write(d.buffer(), 0, d.size());
-                        out.write(0xFF);
                     }
+                    out.write(SmileConstants.BYTE_MARKER_END_OF_CONTENT);
+                    ByteArrayOutputStream d = e.data;
+                    out.write(d.buffer(), 0, d.size());
+                    out.write(SmileConstants.BYTE_MARKER_END_OF_CONTENT);
                 }
             }
             try (InputStream in = conn.getInputStream()) {
