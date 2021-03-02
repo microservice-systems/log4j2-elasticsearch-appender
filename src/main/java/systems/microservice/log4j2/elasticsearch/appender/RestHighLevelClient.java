@@ -42,8 +42,76 @@ final class RestHighLevelClient {
         this.urls = urls;
     }
 
+    private boolean indexExists(URL url, String index) throws IOException {
+        URL u = new URL(url, index);
+        HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+        conn.setRequestMethod("HEAD");
+        conn.setConnectTimeout(30000);
+        conn.setUseCaches(false);
+        conn.setDoOutput(true);
+        conn.setDoInput(true);
+        conn.setRequestProperty("Content-Type", "application/smile");
+        conn.setRequestProperty("Accept", "application/json");
+        conn.connect();
+        try {
+            return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private boolean createIndex(URL url, String index) throws IOException {
+        URL u = new URL(url, index);
+        HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+        conn.setRequestMethod("PUT");
+        conn.setConnectTimeout(30000);
+        conn.setUseCaches(false);
+        conn.setDoOutput(true);
+        conn.setDoInput(true);
+        conn.setRequestProperty("Content-Type", "application/smile");
+        conn.setRequestProperty("Accept", "application/json");
+        conn.connect();
+        try {
+            try (OutputStream out = conn.getOutputStream()) {
+                try (SmileGenerator gen = SMILE_FACTORY.createGenerator(out)) {
+                    gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
+                    gen.writeStartObject(); {
+                        gen.writeFieldName("mappings");
+                        gen.writeStartObject(); {
+                            gen.writeFieldName("properties");
+                            gen.writeStartObject(); {
+                                gen.writeFieldName("time");
+                                gen.writeStartObject(); {
+                                    gen.writeStringField("type", "date");
+                                    gen.writeStringField("format", "epoch_millis");
+                                    gen.writeBooleanField("index", true);
+                                } gen.writeEndObject();
+                            } gen.writeEndObject();
+                        } gen.writeEndObject();
+                    } gen.writeEndObject();
+                    gen.flush();
+                }
+            }
+            return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
+        } finally {
+            conn.disconnect();
+        }
+    }
+
     private BulkResponse bulk(URL url, BulkRequest request) throws IOException {
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        HashSet<String> idxs = new HashSet<>(32);
+        List<InputLogEvent> es = request.events();
+        for (InputLogEvent e : es) {
+            String idx = e.index;
+            if (!idxs.contains(idx)) {
+                idxs.add(idx);
+                if (!indexExists(url, idx)) {
+                    createIndex(url, idx);
+                }
+            }
+        }
+        URL u = new URL(url, "_bulk");
+        HttpURLConnection conn = (HttpURLConnection) u.openConnection();
         conn.setRequestMethod("POST");
         conn.setConnectTimeout(30000);
         conn.setUseCaches(false);
@@ -53,7 +121,6 @@ final class RestHighLevelClient {
         conn.setRequestProperty("Accept", "application/json");
         conn.connect();
         try {
-            List<InputLogEvent> es = request.events();
             try (OutputStream out = conn.getOutputStream()) {
                 for (InputLogEvent e : es) {
                     try (SmileGenerator gen = SMILE_FACTORY.createGenerator(out)) {

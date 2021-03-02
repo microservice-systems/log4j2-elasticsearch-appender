@@ -662,7 +662,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         try {
             URL[] hs = new URL[us.length];
             for (int i = 0, ci = us.length; i < ci; ++i) {
-                hs[i] = new URL(us[i].trim() + "/_bulk");
+                hs[i] = new URL(us[i].trim());
             }
             return new RestHighLevelClient(hs);
         } catch (MalformedURLException e) {
