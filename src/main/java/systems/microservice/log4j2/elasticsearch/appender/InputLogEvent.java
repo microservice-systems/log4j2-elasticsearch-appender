@@ -26,14 +26,18 @@ import org.apache.logging.log4j.core.util.StringBuilderWriter;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.management.*;
+import java.lang.management.ClassLoadingMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.ThreadMXBean;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author Dmitry Kotlyarov
@@ -43,29 +47,19 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
     private static final long MB = 1048576L;
     private static final int SIZE_OVERHEAD = 64;
     private static final SmileFactory SMILE_FACTORY = new SmileFactory();
+    private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
     private static final String PROCESS_UUID = ElasticSearchAppender.PROCESS_UUID.toString();
     private static final long MOST_SIG_BITS = ElasticSearchAppender.PROCESS_UUID.getMostSignificantBits();
     private static final AtomicLong THREAD_LEAST_SIG_BITS = new AtomicLong(0L);
     private static final AtomicLong EVENT_LEAST_SIG_BITS = new AtomicLong(0L);
     private static final ThreadLocal<String> THREAD_UUID = ThreadLocal.withInitial(() -> new UUID(MOST_SIG_BITS, THREAD_LEAST_SIG_BITS.getAndIncrement()).toString());
-    private static final ThreadMXBean THREAD_MX_BEAN = ManagementFactory.getThreadMXBean();
-    private static final MemoryMXBean MEMORY_MX_BEAN = ManagementFactory.getMemoryMXBean();
-    private static final ClassLoadingMXBean CLASS_LOADING_MX_BEAN = ManagementFactory.getClassLoadingMXBean();
-    private static final CompilationMXBean COMPILATION_MX_BEAN = ManagementFactory.getCompilationMXBean();
-    private static final AtomicInteger THREAD_COUNT_LIVE;
-    private static final AtomicInteger THREAD_COUNT_DAEMON;
-    private static final AtomicInteger THREAD_COUNT_PEAK;
-    private static final AtomicInteger MEMORY_HEAP_INIT;
-    private static final AtomicInteger MEMORY_HEAP_USED;
-    private static final AtomicInteger MEMORY_HEAP_COMMITTED;
-    private static final AtomicInteger MEMORY_HEAP_MAX;
-    private static final AtomicInteger MEMORY_NON_HEAP_INIT;
-    private static final AtomicInteger MEMORY_NON_HEAP_USED;
-    private static final AtomicInteger MEMORY_NON_HEAP_COMMITTED;
-    private static final AtomicInteger MEMORY_NON_HEAP_MAX;
-    private static final AtomicInteger MEMORY_OBJECT_PENDING_FINALIZATION_COUNT;
-    private static final AtomicInteger CLASS_COUNT_ACTIVE;
-    private static final Thread MONITOR_THREAD;
+    private static final AtomicReference<CpuUsage> CPU_USAGE = new AtomicReference<>(new CpuUsage());
+    private static final AtomicReference<MemoryUsage> MEMORY_USAGE = new AtomicReference<>(new MemoryUsage());
+    private static final AtomicReference<DiskUsage> DISK_USAGE = new AtomicReference<>(new DiskUsage());
+    private static final AtomicReference<ClassUsage> CLASS_USAGE = new AtomicReference<>(new ClassUsage());
+    private static final AtomicReference<ThreadUsage> THREAD_USAGE = new AtomicReference<>(new ThreadUsage());
+    private static final Thread MONITOR_THREAD_3;
+    private static final Thread MONITOR_THREAD_10;
 
     public final String id;
     public final long time;
@@ -134,23 +128,36 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeStringField("thread.uuid", InputLogEvent.THREAD_UUID.get());
                 addField(gen, "thread.name", t.getName(), lengthStringMax);
                 gen.writeNumberField("thread.priority", t.getPriority());
-                gen.writeNumberField("thread.count.live", THREAD_COUNT_LIVE.get());
-                gen.writeNumberField("thread.count.daemon", THREAD_COUNT_DAEMON.get());
-                gen.writeNumberField("thread.count.peak", THREAD_COUNT_PEAK.get());
-                gen.writeNumberField("thread.count.total", THREAD_MX_BEAN.getTotalStartedThreadCount());
-                gen.writeNumberField("memory.heap.init", MEMORY_HEAP_INIT.get());
-                gen.writeNumberField("memory.heap.used", MEMORY_HEAP_USED.get());
-                gen.writeNumberField("memory.heap.committed", MEMORY_HEAP_COMMITTED.get());
-                gen.writeNumberField("memory.heap.max", MEMORY_HEAP_MAX.get());
-                gen.writeNumberField("memory.non.heap.init", MEMORY_NON_HEAP_INIT.get());
-                gen.writeNumberField("memory.non.heap.used", MEMORY_NON_HEAP_USED.get());
-                gen.writeNumberField("memory.non.heap.committed", MEMORY_NON_HEAP_COMMITTED.get());
-                gen.writeNumberField("memory.non.heap.max", MEMORY_NON_HEAP_MAX.get());
-                gen.writeNumberField("memory.object.pending.finalization.count", MEMORY_OBJECT_PENDING_FINALIZATION_COUNT.get());
-                gen.writeNumberField("class.count.active", CLASS_COUNT_ACTIVE.get());
-                gen.writeNumberField("class.count.loaded", CLASS_LOADING_MX_BEAN.getTotalLoadedClassCount());
-                gen.writeNumberField("class.count.unloaded", CLASS_LOADING_MX_BEAN.getUnloadedClassCount());
-                gen.writeNumberField("compilation.time.total", COMPILATION_MX_BEAN.getTotalCompilationTime());
+                CpuUsage cpu = InputLogEvent.CPU_USAGE.get();
+                gen.writeNumberField("cpu.count", InputLogEvent.CPU_COUNT);
+                gen.writeNumberField("cpu.m1", cpu.m1);
+                gen.writeNumberField("cpu.m5", cpu.m5);
+                gen.writeNumberField("cpu.m15", cpu.m15);
+                gen.writeNumberField("cpu.entity.active", cpu.entityActive);
+                gen.writeNumberField("cpu.entity.total", cpu.entityTotal);
+                MemoryUsage memory = InputLogEvent.MEMORY_USAGE.get();
+                gen.writeNumberField("memory.heap.init", memory.heapInit);
+                gen.writeNumberField("memory.heap.used", memory.heapUsed);
+                gen.writeNumberField("memory.heap.committed", memory.heapCommitted);
+                gen.writeNumberField("memory.heap.max", memory.heapMax);
+                gen.writeNumberField("memory.non.heap.init", memory.nonHeapInit);
+                gen.writeNumberField("memory.non.heap.used", memory.nonHeapUsed);
+                gen.writeNumberField("memory.non.heap.committed", memory.nonHeapCommitted);
+                gen.writeNumberField("memory.non.heap.max", memory.nonHeapMax);
+                gen.writeNumberField("memory.object.pending.finalization", memory.objectPendingFinalization);
+                DiskUsage disk = InputLogEvent.DISK_USAGE.get();
+                gen.writeNumberField("disk.total", disk.total);
+                gen.writeNumberField("disk.free", disk.free);
+                gen.writeNumberField("disk.usable", disk.usable);
+                ClassUsage clazz = InputLogEvent.CLASS_USAGE.get();
+                gen.writeNumberField("class.active", clazz.active);
+                gen.writeNumberField("class.loaded", clazz.loaded);
+                gen.writeNumberField("class.unloaded", clazz.unloaded);
+                ThreadUsage thread = InputLogEvent.THREAD_USAGE.get();
+                gen.writeNumberField("thread.live", thread.live);
+                gen.writeNumberField("thread.daemon", thread.daemon);
+                gen.writeNumberField("thread.peak", thread.peak);
+                gen.writeNumberField("thread.total", thread.total);
                 gen.writeStringField("level", "INFO");
                 if (start) {
                     gen.writeStringField("message", "Hello World!");
@@ -220,19 +227,36 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeStringField("thread.uuid", InputLogEvent.THREAD_UUID.get());
                 addField(gen, "thread.name", event.getThreadName(), lengthStringMax);
                 gen.writeNumberField("thread.priority", event.getThreadPriority());
-                gen.writeNumberField("thread.count.live", THREAD_COUNT_LIVE.get());
-                gen.writeNumberField("thread.count.daemon", THREAD_COUNT_DAEMON.get());
-                gen.writeNumberField("thread.count.peak", THREAD_COUNT_PEAK.get());
-                gen.writeNumberField("memory.heap.init", MEMORY_HEAP_INIT.get());
-                gen.writeNumberField("memory.heap.used", MEMORY_HEAP_USED.get());
-                gen.writeNumberField("memory.heap.committed", MEMORY_HEAP_COMMITTED.get());
-                gen.writeNumberField("memory.heap.max", MEMORY_HEAP_MAX.get());
-                gen.writeNumberField("memory.non.heap.init", MEMORY_NON_HEAP_INIT.get());
-                gen.writeNumberField("memory.non.heap.used", MEMORY_NON_HEAP_USED.get());
-                gen.writeNumberField("memory.non.heap.committed", MEMORY_NON_HEAP_COMMITTED.get());
-                gen.writeNumberField("memory.non.heap.max", MEMORY_NON_HEAP_MAX.get());
-                gen.writeNumberField("memory.object.pending.finalization.count", MEMORY_OBJECT_PENDING_FINALIZATION_COUNT.get());
-                gen.writeNumberField("class.count.active", CLASS_COUNT_ACTIVE.get());
+                CpuUsage cpu = InputLogEvent.CPU_USAGE.get();
+                gen.writeNumberField("cpu.count", InputLogEvent.CPU_COUNT);
+                gen.writeNumberField("cpu.m1", cpu.m1);
+                gen.writeNumberField("cpu.m5", cpu.m5);
+                gen.writeNumberField("cpu.m15", cpu.m15);
+                gen.writeNumberField("cpu.entity.active", cpu.entityActive);
+                gen.writeNumberField("cpu.entity.total", cpu.entityTotal);
+                MemoryUsage memory = InputLogEvent.MEMORY_USAGE.get();
+                gen.writeNumberField("memory.heap.init", memory.heapInit);
+                gen.writeNumberField("memory.heap.used", memory.heapUsed);
+                gen.writeNumberField("memory.heap.committed", memory.heapCommitted);
+                gen.writeNumberField("memory.heap.max", memory.heapMax);
+                gen.writeNumberField("memory.non.heap.init", memory.nonHeapInit);
+                gen.writeNumberField("memory.non.heap.used", memory.nonHeapUsed);
+                gen.writeNumberField("memory.non.heap.committed", memory.nonHeapCommitted);
+                gen.writeNumberField("memory.non.heap.max", memory.nonHeapMax);
+                gen.writeNumberField("memory.object.pending.finalization", memory.objectPendingFinalization);
+                DiskUsage disk = InputLogEvent.DISK_USAGE.get();
+                gen.writeNumberField("disk.total", disk.total);
+                gen.writeNumberField("disk.free", disk.free);
+                gen.writeNumberField("disk.usable", disk.usable);
+                ClassUsage clazz = InputLogEvent.CLASS_USAGE.get();
+                gen.writeNumberField("class.active", clazz.active);
+                gen.writeNumberField("class.loaded", clazz.loaded);
+                gen.writeNumberField("class.unloaded", clazz.unloaded);
+                ThreadUsage thread = InputLogEvent.THREAD_USAGE.get();
+                gen.writeNumberField("thread.live", thread.live);
+                gen.writeNumberField("thread.daemon", thread.daemon);
+                gen.writeNumberField("thread.peak", thread.peak);
+                gen.writeNumberField("thread.total", thread.total);
                 Level l = event.getLevel();
                 if (l != null) {
                     addField(gen, "level", l.toString(), lengthStringMax);
@@ -306,41 +330,14 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
     }
 
     static {
-        MemoryUsage hmu0 = MEMORY_MX_BEAN.getHeapMemoryUsage();
-        MemoryUsage nhmu0 = MEMORY_MX_BEAN.getNonHeapMemoryUsage();
-        THREAD_COUNT_LIVE = new AtomicInteger(THREAD_MX_BEAN.getThreadCount());
-        THREAD_COUNT_DAEMON = new AtomicInteger(THREAD_MX_BEAN.getDaemonThreadCount());
-        THREAD_COUNT_PEAK = new AtomicInteger(THREAD_MX_BEAN.getPeakThreadCount());
-        MEMORY_HEAP_INIT = new AtomicInteger((int) (hmu0.getInit() / MB));
-        MEMORY_HEAP_USED = new AtomicInteger((int) (hmu0.getUsed() / MB));
-        MEMORY_HEAP_COMMITTED = new AtomicInteger((int) (hmu0.getCommitted() / MB));
-        MEMORY_HEAP_MAX = new AtomicInteger((int) (hmu0.getMax() / MB));
-        MEMORY_NON_HEAP_INIT = new AtomicInteger((int) (nhmu0.getInit() / MB));
-        MEMORY_NON_HEAP_USED = new AtomicInteger((int) (nhmu0.getUsed() / MB));
-        MEMORY_NON_HEAP_COMMITTED = new AtomicInteger((int) (nhmu0.getCommitted() / MB));
-        MEMORY_NON_HEAP_MAX = new AtomicInteger((int) (nhmu0.getMax() / MB));
-        MEMORY_OBJECT_PENDING_FINALIZATION_COUNT = new AtomicInteger(MEMORY_MX_BEAN.getObjectPendingFinalizationCount());
-        CLASS_COUNT_ACTIVE = new AtomicInteger(CLASS_LOADING_MX_BEAN.getLoadedClassCount());
-        MONITOR_THREAD = new Thread("log4j2-elasticsearch-appender-monitor") {
+        MONITOR_THREAD_3 = new Thread("log4j2-elasticsearch-appender-monitor-3") {
             @Override
             public void run() {
                 while (true) {
                     try {
-                        MemoryUsage hmu = MEMORY_MX_BEAN.getHeapMemoryUsage();
-                        MemoryUsage nhmu = MEMORY_MX_BEAN.getNonHeapMemoryUsage();
-                        THREAD_COUNT_LIVE.set(THREAD_MX_BEAN.getThreadCount());
-                        THREAD_COUNT_DAEMON.set(THREAD_MX_BEAN.getDaemonThreadCount());
-                        THREAD_COUNT_PEAK.set(THREAD_MX_BEAN.getPeakThreadCount());
-                        MEMORY_HEAP_INIT.set((int) (hmu.getInit() / MB));
-                        MEMORY_HEAP_USED.set((int) (hmu.getUsed() / MB));
-                        MEMORY_HEAP_COMMITTED.set((int) (hmu.getCommitted() / MB));
-                        MEMORY_HEAP_MAX.set((int) (hmu.getMax() / MB));
-                        MEMORY_NON_HEAP_INIT.set((int) (nhmu.getInit() / MB));
-                        MEMORY_NON_HEAP_USED.set((int) (nhmu.getUsed() / MB));
-                        MEMORY_NON_HEAP_COMMITTED.set((int) (nhmu.getCommitted() / MB));
-                        MEMORY_NON_HEAP_MAX.set((int) (nhmu.getMax() / MB));
-                        MEMORY_OBJECT_PENDING_FINALIZATION_COUNT.set(MEMORY_MX_BEAN.getObjectPendingFinalizationCount());
-                        CLASS_COUNT_ACTIVE.set(CLASS_LOADING_MX_BEAN.getLoadedClassCount());
+                        MEMORY_USAGE.set(new MemoryUsage());
+                        CLASS_USAGE.set(new ClassUsage());
+                        THREAD_USAGE.set(new ThreadUsage());
                         try {
                             Thread.sleep(3000L);
                         } catch (InterruptedException e) {
@@ -350,8 +347,26 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 }
             }
         };
-        MONITOR_THREAD.setDaemon(true);
-        MONITOR_THREAD.start();
+        MONITOR_THREAD_3.setDaemon(true);
+        MONITOR_THREAD_3.start();
+        MONITOR_THREAD_10 = new Thread("log4j2-elasticsearch-appender-monitor-10") {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        CPU_USAGE.set(new CpuUsage());
+                        DISK_USAGE.set(new DiskUsage());
+                        try {
+                            Thread.sleep(10000L);
+                        } catch (InterruptedException e) {
+                        }
+                    } catch (Throwable e) {
+                    }
+                }
+            }
+        };
+        MONITOR_THREAD_10.setDaemon(true);
+        MONITOR_THREAD_10.start();
     }
 
     private static void addField(SmileGenerator generator, String name, String value, int lengthMax) {
@@ -398,5 +413,97 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
             }
         }
         return sb.toString();
+    }
+
+    private static final class CpuUsage {
+        public final float m1;
+        public final float m5;
+        public final float m15;
+        public final int entityActive;
+        public final int entityTotal;
+
+        public CpuUsage() {
+            String avg = Util.loadString("/proc/loadavg", "0.0 0.0 0.0 0/0 0");
+            String[] avgs = avg.split(" ");
+            String[] ents = avgs[3].split("/");
+            this.m1 = Float.parseFloat(avgs[0]);
+            this.m5 = Float.parseFloat(avgs[1]);
+            this.m15 = Float.parseFloat(avgs[2]);
+            this.entityActive = Integer.parseInt(ents[0]);
+            this.entityTotal = Integer.parseInt(ents[1]);
+        }
+    }
+
+    private static final class MemoryUsage {
+        private static final MemoryMXBean MEMORY_MX_BEAN = ManagementFactory.getMemoryMXBean();
+
+        public final long heapInit;
+        public final long heapUsed;
+        public final long heapCommitted;
+        public final long heapMax;
+        public final long nonHeapInit;
+        public final long nonHeapUsed;
+        public final long nonHeapCommitted;
+        public final long nonHeapMax;
+        public final int objectPendingFinalization;
+
+        public MemoryUsage() {
+            java.lang.management.MemoryUsage hmu = MEMORY_MX_BEAN.getHeapMemoryUsage();
+            java.lang.management.MemoryUsage nhmu = MEMORY_MX_BEAN.getNonHeapMemoryUsage();
+
+            this.heapInit = hmu.getInit() / MB;
+            this.heapUsed = hmu.getUsed() / MB;
+            this.heapCommitted = hmu.getCommitted() / MB;
+            this.heapMax = hmu.getMax() / MB;
+            this.nonHeapInit = nhmu.getInit() / MB;
+            this.nonHeapUsed = nhmu.getUsed() / MB;
+            this.nonHeapCommitted = nhmu.getCommitted() / MB;
+            this.nonHeapMax = nhmu.getMax() / MB;
+            this.objectPendingFinalization = MEMORY_MX_BEAN.getObjectPendingFinalizationCount();
+        }
+    }
+
+    private static final class DiskUsage {
+        private static final File ROOT_DISK = new File("/");
+
+        public final long total;
+        public final long free;
+        public final long usable;
+
+        public DiskUsage() {
+            this.total = ROOT_DISK.getTotalSpace() / MB;
+            this.free = ROOT_DISK.getFreeSpace() / MB;
+            this.usable = ROOT_DISK.getUsableSpace() / MB;
+        }
+    }
+
+    private static final class ClassUsage {
+        private static final ClassLoadingMXBean CLASS_LOADING_MX_BEAN = ManagementFactory.getClassLoadingMXBean();
+
+        public final int active;
+        public final long loaded;
+        public final long unloaded;
+
+        public ClassUsage() {
+            this.active = CLASS_LOADING_MX_BEAN.getLoadedClassCount();
+            this.loaded = CLASS_LOADING_MX_BEAN.getTotalLoadedClassCount();
+            this.unloaded = CLASS_LOADING_MX_BEAN.getUnloadedClassCount();
+        }
+    }
+
+    private static final class ThreadUsage {
+        private static final ThreadMXBean THREAD_MX_BEAN = ManagementFactory.getThreadMXBean();
+
+        public final int live;
+        public final int daemon;
+        public final int peak;
+        public final long total;
+
+        public ThreadUsage() {
+            this.live = THREAD_MX_BEAN.getThreadCount();
+            this.daemon = THREAD_MX_BEAN.getDaemonThreadCount();
+            this.peak = THREAD_MX_BEAN.getPeakThreadCount();
+            this.total = THREAD_MX_BEAN.getTotalStartedThreadCount();
+        }
     }
 }

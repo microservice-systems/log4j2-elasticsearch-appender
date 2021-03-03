@@ -42,59 +42,75 @@ final class RestHighLevelClient {
         this.urls = urls;
     }
 
-    private boolean indexExists(URL url, String index) throws IOException {
-        URL u = new URL(url, index);
-        HttpURLConnection conn = (HttpURLConnection) u.openConnection();
-        conn.setRequestMethod("HEAD");
-        conn.setConnectTimeout(30000);
-        conn.setUseCaches(false);
-        conn.setDoOutput(true);
-        conn.setDoInput(true);
-        conn.setRequestProperty("Content-Type", "application/smile");
-        conn.setRequestProperty("Accept", "application/json");
-        conn.connect();
+    private boolean indexExists(URL url, String index) {
         try {
-            return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
-        } finally {
-            conn.disconnect();
+            URL u = new URL(url, index);
+            HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+            conn.setRequestMethod("HEAD");
+            conn.setConnectTimeout(30000);
+            conn.setUseCaches(false);
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+            conn.setRequestProperty("Content-Type", "application/smile");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.connect();
+            try {
+                return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
+            } finally {
+                conn.disconnect();
+            }
+        } catch (IOException ex) {
+            return false;
         }
     }
 
-    private boolean createIndex(URL url, String index) throws IOException {
-        URL u = new URL(url, index);
-        HttpURLConnection conn = (HttpURLConnection) u.openConnection();
-        conn.setRequestMethod("PUT");
-        conn.setConnectTimeout(30000);
-        conn.setUseCaches(false);
-        conn.setDoOutput(true);
-        conn.setDoInput(true);
-        conn.setRequestProperty("Content-Type", "application/smile");
-        conn.setRequestProperty("Accept", "application/json");
-        conn.connect();
+    private boolean createIndex(URL url, String index) {
         try {
-            try (OutputStream out = conn.getOutputStream()) {
-                try (SmileGenerator gen = SMILE_FACTORY.createGenerator(out)) {
-                    gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
-                    gen.writeStartObject(); {
-                        gen.writeFieldName("mappings");
-                        gen.writeStartObject(); {
-                            gen.writeFieldName("properties");
-                            gen.writeStartObject(); {
-                                gen.writeFieldName("time");
-                                gen.writeStartObject(); {
-                                    gen.writeStringField("type", "date");
-                                    gen.writeStringField("format", "epoch_millis");
-                                    gen.writeBooleanField("index", true);
-                                } gen.writeEndObject();
-                            } gen.writeEndObject();
-                        } gen.writeEndObject();
-                    } gen.writeEndObject();
-                    gen.flush();
+            URL u = new URL(url, index);
+            HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+            conn.setRequestMethod("PUT");
+            conn.setConnectTimeout(30000);
+            conn.setUseCaches(false);
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+            conn.setRequestProperty("Content-Type", "application/smile");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.connect();
+            try {
+                try (OutputStream out = conn.getOutputStream()) {
+                    try (SmileGenerator gen = SMILE_FACTORY.createGenerator(out)) {
+                        gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
+                        gen.writeStartObject();
+                        {
+                            gen.writeFieldName("mappings");
+                            gen.writeStartObject();
+                            {
+                                gen.writeFieldName("properties");
+                                gen.writeStartObject();
+                                {
+                                    gen.writeFieldName("time");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "date");
+                                        gen.writeStringField("format", "epoch_millis");
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                }
+                                gen.writeEndObject();
+                            }
+                            gen.writeEndObject();
+                        }
+                        gen.writeEndObject();
+                        gen.flush();
+                    }
                 }
+                return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
+            } finally {
+                conn.disconnect();
             }
-            return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
-        } finally {
-            conn.disconnect();
+        } catch (IOException ex) {
+            return false;
         }
     }
 
@@ -148,17 +164,17 @@ final class RestHighLevelClient {
         }
     }
 
-    public BulkResponse bulk(BulkRequest request) throws Exception {
+    public BulkResponse bulk(BulkRequest request) throws IOException {
         ArrayList<URL> us = new ArrayList<>(urls.length);
         Collections.addAll(us, urls);
         Random rnd = new Random();
-        Exception e = null;
+        IOException e = null;
         while (!us.isEmpty()) {
             int i = rnd.nextInt(us.size());
             URL u = us.remove(i);
             try {
                 return bulk(u, request);
-            } catch (Exception ex) {
+            } catch (IOException ex) {
                 e = ex;
             }
         }
