@@ -89,7 +89,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                          boolean out,
                          boolean setDefaultUncaughtExceptionHandler) {
         this.id = new UUID(MOST_SIG_BITS, EVENT_LEAST_SIG_BITS.getAndIncrement()).toString();
-        this.time = start ? ElasticSearchAppender.PROCESS_START_TIME : System.currentTimeMillis();
+        this.time = start ? ElasticSearchAppender.PROCESS_START : System.currentTimeMillis();
 
         try {
             Thread t = Thread.currentThread();
@@ -105,9 +105,9 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeStringField("language", "JAVA");
                 gen.writeNumberField("process.id", ElasticSearchAppender.PROCESS_ID);
                 gen.writeStringField("process.uuid", InputLogEvent.PROCESS_UUID);
-                gen.writeNumberField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
+                gen.writeNumberField("process.start", ElasticSearchAppender.PROCESS_START);
                 if (!start) {
-                    gen.writeNumberField("process.finish.time", time);
+                    gen.writeNumberField("process.finish", time);
                 }
                 addField(gen, "process.variables", createProcessVariables(), lengthStringMax);
                 addField(gen, "process.properties", createProcessProperties(), lengthStringMax);
@@ -215,7 +215,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeStringField("language", "JAVA");
                 gen.writeNumberField("process.id", ElasticSearchAppender.PROCESS_ID);
                 gen.writeStringField("process.uuid", InputLogEvent.PROCESS_UUID);
-                gen.writeNumberField("process.start.time", ElasticSearchAppender.PROCESS_START_TIME);
+                gen.writeNumberField("process.start", ElasticSearchAppender.PROCESS_START);
                 addField(gen, "host.name", ElasticSearchAppender.HOST_NAME, lengthStringMax);
                 addField(gen, "host.ip", ElasticSearchAppender.HOST_IP, lengthStringMax);
                 for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {

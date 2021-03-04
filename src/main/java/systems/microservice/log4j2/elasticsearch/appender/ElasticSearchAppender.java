@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class ElasticSearchAppender extends AbstractAppender {
     public static final long PROCESS_ID = createProcessID();
     public static final UUID PROCESS_UUID = createProcessUUID();
-    public static final long PROCESS_START_TIME = createProcessStartTime();
+    public static final long PROCESS_START = createProcessStart();
     public static final String HOST_NAME = createHostName();
     public static final String HOST_IP = createHostIP();
     public static final Map<String, String> LOG_TAGS = createLogTags();
@@ -572,7 +572,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return new UUID(new SecureRandom().nextLong(), 0L);
     }
 
-    private static long createProcessStartTime() {
+    private static long createProcessStart() {
         return ManagementFactory.getRuntimeMXBean().getStartTime();
     }
 

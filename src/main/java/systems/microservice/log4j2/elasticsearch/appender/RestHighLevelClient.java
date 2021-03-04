@@ -96,6 +96,63 @@ final class RestHighLevelClient {
                                         gen.writeBooleanField("index", true);
                                     }
                                     gen.writeEndObject();
+                                    gen.writeFieldName("type");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "keyword");
+                                        gen.writeNumberField("ignore_above", 16);
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("language");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "keyword");
+                                        gen.writeNumberField("ignore_above", 16);
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("process");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeFieldName("properties");
+                                        gen.writeStartObject();
+                                        {
+                                            gen.writeFieldName("id");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "long");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("uuid");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "keyword");
+                                                gen.writeNumberField("ignore_above", 36);
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("start");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "date");
+                                                gen.writeStringField("format", "epoch_millis");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("finish");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "date");
+                                                gen.writeStringField("format", "epoch_millis");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                        }
+                                        gen.writeEndObject();
+                                    }
+                                    gen.writeEndObject();
                                 }
                                 gen.writeEndObject();
                             }
@@ -141,13 +198,17 @@ final class RestHighLevelClient {
                 for (InputLogEvent e : es) {
                     try (SmileGenerator gen = SMILE_FACTORY.createGenerator(out)) {
                         gen.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
-                        gen.writeStartObject(); {
+                        gen.writeStartObject();
+                        {
                             gen.writeFieldName("create");
-                            gen.writeStartObject(); {
+                            gen.writeStartObject();
+                            {
                                 gen.writeStringField("_index", e.index);
                                 gen.writeStringField("_id", e.id);
-                            } gen.writeEndObject();
-                        } gen.writeEndObject();
+                            }
+                            gen.writeEndObject();
+                        }
+                        gen.writeEndObject();
                         gen.flush();
                     }
                     out.write(SmileConstants.BYTE_MARKER_END_OF_CONTENT);
