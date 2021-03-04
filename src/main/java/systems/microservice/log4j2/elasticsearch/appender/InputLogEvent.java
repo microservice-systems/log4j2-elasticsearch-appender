@@ -47,7 +47,6 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
     private static final long MB = 1048576L;
     private static final int SIZE_OVERHEAD = 64;
     private static final SmileFactory SMILE_FACTORY = new SmileFactory();
-    private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
     private static final String PROCESS_UUID = ElasticSearchAppender.PROCESS_UUID.toString();
     private static final long MOST_SIG_BITS = ElasticSearchAppender.PROCESS_UUID.getMostSignificantBits();
     private static final AtomicLong THREAD_LEAST_SIG_BITS = new AtomicLong(0L);
@@ -129,7 +128,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 addField(gen, "thread.name", t.getName(), lengthStringMax);
                 gen.writeNumberField("thread.priority", t.getPriority());
                 CpuUsage cpu = InputLogEvent.CPU_USAGE.get();
-                gen.writeNumberField("cpu.count", InputLogEvent.CPU_COUNT);
+                gen.writeNumberField("cpu.count", cpu.count);
                 gen.writeNumberField("cpu.m1", cpu.m1);
                 gen.writeNumberField("cpu.m5", cpu.m5);
                 gen.writeNumberField("cpu.m15", cpu.m15);
@@ -228,7 +227,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 addField(gen, "thread.name", event.getThreadName(), lengthStringMax);
                 gen.writeNumberField("thread.priority", event.getThreadPriority());
                 CpuUsage cpu = InputLogEvent.CPU_USAGE.get();
-                gen.writeNumberField("cpu.count", InputLogEvent.CPU_COUNT);
+                gen.writeNumberField("cpu.count", cpu.count);
                 gen.writeNumberField("cpu.m1", cpu.m1);
                 gen.writeNumberField("cpu.m5", cpu.m5);
                 gen.writeNumberField("cpu.m15", cpu.m15);
@@ -416,6 +415,9 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
     }
 
     private static final class CpuUsage {
+        private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
+
+        public final int count;
         public final float m1;
         public final float m5;
         public final float m15;
@@ -426,6 +428,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
             String avg = Util.loadString("/proc/loadavg", "0.0 0.0 0.0 0/0 0");
             String[] avgs = avg.split(" ");
             String[] ents = avgs[3].split("/");
+            this.count = CPU_COUNT;
             this.m1 = Float.parseFloat(avgs[0]);
             this.m5 = Float.parseFloat(avgs[1]);
             this.m15 = Float.parseFloat(avgs[2]);
