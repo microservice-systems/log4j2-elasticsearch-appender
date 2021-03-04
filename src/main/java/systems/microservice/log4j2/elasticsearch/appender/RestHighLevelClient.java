@@ -149,6 +149,72 @@ final class RestHighLevelClient {
                                                 gen.writeBooleanField("index", true);
                                             }
                                             gen.writeEndObject();
+                                            gen.writeFieldName("variables");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "text");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("properties");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "text");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("cmdline");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "text");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("io");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "text");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("limits");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "text");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("mounts");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "text");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("net");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("dev");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeStringField("type", "text");
+                                                        gen.writeBooleanField("index", true);
+                                                    }
+                                                    gen.writeEndObject();
+                                                    gen.writeFieldName("protocols");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeStringField("type", "text");
+                                                        gen.writeBooleanField("index", true);
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
+                                            }
+                                            gen.writeEndObject();
                                         }
                                         gen.writeEndObject();
                                     }
