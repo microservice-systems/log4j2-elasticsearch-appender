@@ -117,15 +117,15 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 addField(gen, "process.mounts", Util.loadString(String.format("/proc/%d/mounts", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
                 addField(gen, "process.net.dev", Util.loadString(String.format("/proc/%d/net/dev", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
                 addField(gen, "process.net.protocols", Util.loadString(String.format("/proc/%d/net/protocols", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-                addField(gen, "host.name", ElasticSearchAppender.HOST_NAME, lengthStringMax);
-                addField(gen, "host.ip", ElasticSearchAppender.HOST_IP, lengthStringMax);
+                addField(gen, "host.name", ElasticSearchAppender.HOST_NAME, 256);
+                addField(gen, "host.ip", ElasticSearchAppender.HOST_IP, 64);
                 for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
                     addField(gen, e.getKey(), e.getValue(), lengthStringMax);
                 }
                 gen.writeStringField("logger", ElasticSearchAppender.class.getName());
                 gen.writeNumberField("thread.id", t.getId());
                 gen.writeStringField("thread.uuid", InputLogEvent.THREAD_UUID.get());
-                addField(gen, "thread.name", t.getName(), lengthStringMax);
+                addField(gen, "thread.name", t.getName(), 256);
                 gen.writeNumberField("thread.priority", t.getPriority());
                 CpuUsage cpu = InputLogEvent.CPU_USAGE.get();
                 gen.writeNumberField("cpu.count", cpu.count);
@@ -216,15 +216,15 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeNumberField("process.id", ElasticSearchAppender.PROCESS_ID);
                 gen.writeStringField("process.uuid", InputLogEvent.PROCESS_UUID);
                 gen.writeNumberField("process.start", ElasticSearchAppender.PROCESS_START);
-                addField(gen, "host.name", ElasticSearchAppender.HOST_NAME, lengthStringMax);
-                addField(gen, "host.ip", ElasticSearchAppender.HOST_IP, lengthStringMax);
+                addField(gen, "host.name", ElasticSearchAppender.HOST_NAME, 256);
+                addField(gen, "host.ip", ElasticSearchAppender.HOST_IP, 64);
                 for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
                     addField(gen, e.getKey(), e.getValue(), lengthStringMax);
                 }
-                addField(gen, "logger", event.getLoggerName(), lengthStringMax);
+                addField(gen, "logger", event.getLoggerName(), 256);
                 gen.writeNumberField("thread.id", event.getThreadId());
                 gen.writeStringField("thread.uuid", InputLogEvent.THREAD_UUID.get());
-                addField(gen, "thread.name", event.getThreadName(), lengthStringMax);
+                addField(gen, "thread.name", event.getThreadName(), 256);
                 gen.writeNumberField("thread.priority", event.getThreadPriority());
                 CpuUsage cpu = InputLogEvent.CPU_USAGE.get();
                 gen.writeNumberField("cpu.count", cpu.count);
