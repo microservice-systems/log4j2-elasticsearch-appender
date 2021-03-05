@@ -102,7 +102,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 } else {
                     gen.writeStringField("type", "FINISH");
                 }
-                gen.writeStringField("language", "JAVA");
+                gen.writeStringField("platform", "JAVA");
                 gen.writeNumberField("process.id", ElasticSearchAppender.PROCESS_ID);
                 gen.writeStringField("process.uuid", InputLogEvent.PROCESS_UUID);
                 gen.writeNumberField("process.start", ElasticSearchAppender.PROCESS_START);
@@ -212,7 +212,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeStartObject();
                 gen.writeNumberField("time", time);
                 gen.writeStringField("type", (ex == null) ? "DEFAULT" : "EXCEPTION");
-                gen.writeStringField("language", "JAVA");
+                gen.writeStringField("platform", "JAVA");
                 gen.writeNumberField("process.id", ElasticSearchAppender.PROCESS_ID);
                 gen.writeStringField("process.uuid", InputLogEvent.PROCESS_UUID);
                 gen.writeNumberField("process.start", ElasticSearchAppender.PROCESS_START);

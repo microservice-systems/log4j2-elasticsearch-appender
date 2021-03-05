@@ -104,7 +104,7 @@ final class RestHighLevelClient {
                                         gen.writeBooleanField("index", true);
                                     }
                                     gen.writeEndObject();
-                                    gen.writeFieldName("language");
+                                    gen.writeFieldName("platform");
                                     gen.writeStartObject();
                                     {
                                         gen.writeStringField("type", "keyword");
