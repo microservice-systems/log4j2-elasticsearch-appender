@@ -864,6 +864,61 @@ final class RestHighLevelClient {
                                         gen.writeEndObject();
                                     }
                                     gen.writeEndObject();
+                                    gen.writeFieldName("size");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "integer");
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("total");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeFieldName("properties");
+                                        gen.writeStartObject();
+                                        {
+                                            gen.writeFieldName("count");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "long");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("size");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "long");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                        }
+                                        gen.writeEndObject();
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("lost");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeFieldName("properties");
+                                        gen.writeStartObject();
+                                        {
+                                            gen.writeFieldName("count");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "long");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("size");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "long");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                        }
+                                        gen.writeEndObject();
+                                    }
+                                    gen.writeEndObject();
                                 }
                                 gen.writeEndObject();
                             }
