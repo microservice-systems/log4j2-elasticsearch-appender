@@ -163,9 +163,9 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 } else {
                     gen.writeStringField("message", "Goodbye World!");
                 }
-                addField(gen, "appender.name", name, lengthStringMax);
+                addField(gen, "appender.name", name, 256);
                 addField(gen, "appender.url", url, lengthStringMax);
-                addField(gen, "appender.index", index, lengthStringMax);
+                addField(gen, "appender.index", index, 256);
                 gen.writeBooleanField("appender.enable", enable);
                 gen.writeNumberField("appender.count.max", countMax);
                 gen.writeNumberField("appender.size.max", sizeMax);
@@ -258,7 +258,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeNumberField("thread.total", thread.total);
                 Level l = event.getLevel();
                 if (l != null) {
-                    addField(gen, "level", l.toString(), lengthStringMax);
+                    addField(gen, "level", l.toString(), 128);
                 } else {
                     gen.writeStringField("level", "INFO");
                 }

@@ -558,6 +558,61 @@ final class RestHighLevelClient {
                                         gen.writeEndObject();
                                     }
                                     gen.writeEndObject();
+                                    gen.writeFieldName("level");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "keyword");
+                                        gen.writeNumberField("ignore_above", 128);
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("message");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "text");
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("appender");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeFieldName("properties");
+                                        gen.writeStartObject();
+                                        {
+                                            gen.writeFieldName("name");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "keyword");
+                                                gen.writeNumberField("ignore_above", 256);
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("url");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "text");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("index");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "keyword");
+                                                gen.writeNumberField("ignore_above", 256);
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("enable");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "boolean");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                        }
+                                        gen.writeEndObject();
+                                    }
+                                    gen.writeEndObject();
                                 }
                                 gen.writeEndObject();
                             }
