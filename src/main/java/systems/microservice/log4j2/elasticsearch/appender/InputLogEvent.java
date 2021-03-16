@@ -125,7 +125,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeStringField("logger", ElasticSearchAppender.class.getName());
                 gen.writeNumberField("thread.id", t.getId());
                 gen.writeStringField("thread.uuid", InputLogEvent.THREAD_UUID.get());
-                addField(gen, "thread.name", t.getName(), 256);
+                addField(gen, "thread.name", t.getName(), 512);
                 gen.writeNumberField("thread.priority", t.getPriority());
                 CpuUsage cpu = InputLogEvent.CPU_USAGE.get();
                 gen.writeNumberField("cpu.count", cpu.count);
@@ -221,10 +221,10 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
                     addField(gen, e.getKey(), e.getValue(), lengthStringMax);
                 }
-                addField(gen, "logger", event.getLoggerName(), 256);
+                addField(gen, "logger", event.getLoggerName(), 512);
                 gen.writeNumberField("thread.id", event.getThreadId());
                 gen.writeStringField("thread.uuid", InputLogEvent.THREAD_UUID.get());
-                addField(gen, "thread.name", event.getThreadName(), 256);
+                addField(gen, "thread.name", event.getThreadName(), 512);
                 gen.writeNumberField("thread.priority", event.getThreadPriority());
                 CpuUsage cpu = InputLogEvent.CPU_USAGE.get();
                 gen.writeNumberField("cpu.count", cpu.count);
