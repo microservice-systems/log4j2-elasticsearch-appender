@@ -979,6 +979,31 @@ final class RestHighLevelClient {
                                         gen.writeEndObject();
                                     }
                                     gen.writeEndObject();
+                                    gen.writeFieldName("marker");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeFieldName("properties");
+                                        gen.writeStartObject();
+                                        {
+                                            gen.writeFieldName("name");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "keyword");
+                                                gen.writeNumberField("ignore_above", 512);
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("parents");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "boolean");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                        }
+                                        gen.writeEndObject();
+                                    }
+                                    gen.writeEndObject();
                                     gen.writeFieldName("size");
                                     gen.writeStartObject();
                                     {

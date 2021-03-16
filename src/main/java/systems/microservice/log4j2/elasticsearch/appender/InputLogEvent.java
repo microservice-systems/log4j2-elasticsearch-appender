@@ -292,7 +292,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 }
                 Marker mrk = event.getMarker();
                 if (mrk != null) {
-                    addField(gen, "marker.name", mrk.getName(), lengthStringMax);
+                    addField(gen, "marker.name", mrk.getName(), 512);
                     gen.writeBooleanField("marker.parents", mrk.hasParents());
                 }
                 ReadOnlyStringMap ctx = event.getContextData();
