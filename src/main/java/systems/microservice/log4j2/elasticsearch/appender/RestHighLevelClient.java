@@ -728,6 +728,138 @@ final class RestHighLevelClient {
                                                 gen.writeEndObject();
                                             }
                                             gen.writeEndObject();
+                                            gen.writeFieldName("event");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("size");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeFieldName("properties");
+                                                        gen.writeStartObject();
+                                                        {
+                                                            gen.writeFieldName("start");
+                                                            gen.writeStartObject();
+                                                            {
+                                                                gen.writeFieldName("properties");
+                                                                gen.writeStartObject();
+                                                                {
+                                                                    gen.writeFieldName("finish");
+                                                                    gen.writeStartObject();
+                                                                    {
+                                                                        gen.writeStringField("type", "integer");
+                                                                        gen.writeBooleanField("index", true);
+                                                                    }
+                                                                    gen.writeEndObject();
+                                                                }
+                                                                gen.writeEndObject();
+                                                            }
+                                                            gen.writeEndObject();
+                                                            gen.writeFieldName("default");
+                                                            gen.writeStartObject();
+                                                            {
+                                                                gen.writeStringField("type", "integer");
+                                                                gen.writeBooleanField("index", true);
+                                                            }
+                                                            gen.writeEndObject();
+                                                            gen.writeFieldName("exception");
+                                                            gen.writeStartObject();
+                                                            {
+                                                                gen.writeStringField("type", "integer");
+                                                                gen.writeBooleanField("index", true);
+                                                            }
+                                                            gen.writeEndObject();
+                                                        }
+                                                        gen.writeEndObject();
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("length");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("string");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeFieldName("properties");
+                                                        gen.writeStartObject();
+                                                        {
+                                                            gen.writeFieldName("max");
+                                                            gen.writeStartObject();
+                                                            {
+                                                                gen.writeStringField("type", "integer");
+                                                                gen.writeBooleanField("index", true);
+                                                            }
+                                                            gen.writeEndObject();
+                                                        }
+                                                        gen.writeEndObject();
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("out");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "boolean");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("set");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("default");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeFieldName("properties");
+                                                        gen.writeStartObject();
+                                                        {
+                                                            gen.writeFieldName("uncaught");
+                                                            gen.writeStartObject();
+                                                            {
+                                                                gen.writeFieldName("properties");
+                                                                gen.writeStartObject();
+                                                                {
+                                                                    gen.writeFieldName("exception");
+                                                                    gen.writeStartObject();
+                                                                    {
+                                                                        gen.writeFieldName("properties");
+                                                                        gen.writeStartObject();
+                                                                        {
+                                                                            gen.writeFieldName("handler");
+                                                                            gen.writeStartObject();
+                                                                            {
+                                                                                gen.writeStringField("type", "boolean");
+                                                                                gen.writeBooleanField("index", true);
+                                                                            }
+                                                                            gen.writeEndObject();
+                                                                        }
+                                                                        gen.writeEndObject();
+                                                                    }
+                                                                    gen.writeEndObject();
+                                                                }
+                                                                gen.writeEndObject();
+                                                            }
+                                                            gen.writeEndObject();
+                                                        }
+                                                        gen.writeEndObject();
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
+                                            }
+                                            gen.writeEndObject();
                                         }
                                         gen.writeEndObject();
                                     }
