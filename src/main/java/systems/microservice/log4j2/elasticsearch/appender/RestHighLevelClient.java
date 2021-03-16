@@ -562,7 +562,7 @@ final class RestHighLevelClient {
                                     gen.writeStartObject();
                                     {
                                         gen.writeStringField("type", "keyword");
-                                        gen.writeNumberField("ignore_above", 128);
+                                        gen.writeNumberField("ignore_above", 256);
                                         gen.writeBooleanField("index", true);
                                     }
                                     gen.writeEndObject();
@@ -607,6 +607,125 @@ final class RestHighLevelClient {
                                             {
                                                 gen.writeStringField("type", "boolean");
                                                 gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("count");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("max");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeStringField("type", "integer");
+                                                        gen.writeBooleanField("index", true);
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("size");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("max");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeStringField("type", "long");
+                                                        gen.writeBooleanField("index", true);
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("bulk");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("count");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeFieldName("properties");
+                                                        gen.writeStartObject();
+                                                        {
+                                                            gen.writeFieldName("max");
+                                                            gen.writeStartObject();
+                                                            {
+                                                                gen.writeStringField("type", "integer");
+                                                                gen.writeBooleanField("index", true);
+                                                            }
+                                                            gen.writeEndObject();
+                                                        }
+                                                        gen.writeEndObject();
+                                                    }
+                                                    gen.writeEndObject();
+                                                    gen.writeFieldName("size");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeFieldName("properties");
+                                                        gen.writeStartObject();
+                                                        {
+                                                            gen.writeFieldName("max");
+                                                            gen.writeStartObject();
+                                                            {
+                                                                gen.writeStringField("type", "long");
+                                                                gen.writeBooleanField("index", true);
+                                                            }
+                                                            gen.writeEndObject();
+                                                        }
+                                                        gen.writeEndObject();
+                                                    }
+                                                    gen.writeEndObject();
+                                                    gen.writeFieldName("retry");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeFieldName("properties");
+                                                        gen.writeStartObject();
+                                                        {
+                                                            gen.writeFieldName("count");
+                                                            gen.writeStartObject();
+                                                            {
+                                                                gen.writeStringField("type", "integer");
+                                                                gen.writeBooleanField("index", true);
+                                                            }
+                                                            gen.writeEndObject();
+                                                            gen.writeFieldName("delay");
+                                                            gen.writeStartObject();
+                                                            {
+                                                                gen.writeStringField("type", "long");
+                                                                gen.writeBooleanField("index", true);
+                                                            }
+                                                            gen.writeEndObject();
+                                                        }
+                                                        gen.writeEndObject();
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("delay");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("max");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeStringField("type", "long");
+                                                        gen.writeBooleanField("index", true);
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
                                             }
                                             gen.writeEndObject();
                                         }

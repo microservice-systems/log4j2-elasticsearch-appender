@@ -258,7 +258,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeNumberField("thread.total", thread.total);
                 Level l = event.getLevel();
                 if (l != null) {
-                    addField(gen, "level", l.toString(), 128);
+                    addField(gen, "level", l.toString(), 256);
                 } else {
                     gen.writeStringField("level", "INFO");
                 }
