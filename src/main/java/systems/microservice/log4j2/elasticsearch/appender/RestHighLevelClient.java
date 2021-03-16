@@ -864,6 +864,121 @@ final class RestHighLevelClient {
                                         gen.writeEndObject();
                                     }
                                     gen.writeEndObject();
+                                    gen.writeFieldName("source");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeFieldName("properties");
+                                        gen.writeStartObject();
+                                        {
+                                            gen.writeFieldName("file");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "keyword");
+                                                gen.writeNumberField("ignore_above", 512);
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("class");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "keyword");
+                                                gen.writeNumberField("ignore_above", 512);
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("method");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "keyword");
+                                                gen.writeNumberField("ignore_above", 512);
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("line");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "integer");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                        }
+                                        gen.writeEndObject();
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("exception");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeFieldName("properties");
+                                        gen.writeStartObject();
+                                        {
+                                            gen.writeFieldName("class");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "keyword");
+                                                gen.writeNumberField("ignore_above", 512);
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("message");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "text");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("stacktrace");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "text");
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("suppressed");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("count");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeStringField("type", "integer");
+                                                        gen.writeBooleanField("index", true);
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
+                                            }
+                                            gen.writeEndObject();
+                                            gen.writeFieldName("cause");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeFieldName("properties");
+                                                gen.writeStartObject();
+                                                {
+                                                    gen.writeFieldName("class");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeStringField("type", "keyword");
+                                                        gen.writeNumberField("ignore_above", 512);
+                                                        gen.writeBooleanField("index", true);
+                                                    }
+                                                    gen.writeEndObject();
+                                                    gen.writeFieldName("message");
+                                                    gen.writeStartObject();
+                                                    {
+                                                        gen.writeStringField("type", "text");
+                                                        gen.writeBooleanField("index", true);
+                                                    }
+                                                    gen.writeEndObject();
+                                                }
+                                                gen.writeEndObject();
+                                            }
+                                            gen.writeEndObject();
+                                        }
+                                        gen.writeEndObject();
+                                    }
+                                    gen.writeEndObject();
                                     gen.writeFieldName("size");
                                     gen.writeStartObject();
                                     {

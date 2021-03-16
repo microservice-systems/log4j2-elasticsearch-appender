@@ -268,13 +268,13 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 }
                 StackTraceElement ste = event.getSource();
                 if (ste != null) {
-                    addField(gen, "source.file", ste.getFileName(), lengthStringMax);
-                    addField(gen, "source.class", ste.getClassName(), lengthStringMax);
-                    addField(gen, "source.method", ste.getMethodName(), lengthStringMax);
+                    addField(gen, "source.file", ste.getFileName(), 512);
+                    addField(gen, "source.class", ste.getClassName(), 512);
+                    addField(gen, "source.method", ste.getMethodName(), 512);
                     gen.writeNumberField("source.line", ste.getLineNumber());
                 }
                 if (ex != null) {
-                    addField(gen, "exception.class", ex.getClass().getName(), lengthStringMax);
+                    addField(gen, "exception.class", ex.getClass().getName(), 512);
                     addField(gen, "exception.message", ex.getMessage(), lengthStringMax);
                     try (StringBuilderWriter sbw = new StringBuilderWriter(4096)) {
                         ex.printStackTrace(new PrintWriter(sbw, false));
@@ -286,7 +286,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                     }
                     Throwable cex = ex.getCause();
                     if (cex != null) {
-                        addField(gen, "exception.cause.class", cex.getClass().getName(), lengthStringMax);
+                        addField(gen, "exception.cause.class", cex.getClass().getName(), 512);
                         addField(gen, "exception.cause.message", cex.getMessage(), lengthStringMax);
                     }
                 }
