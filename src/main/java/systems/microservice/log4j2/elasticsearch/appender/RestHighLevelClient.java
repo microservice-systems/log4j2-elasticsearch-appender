@@ -1059,6 +1059,46 @@ final class RestHighLevelClient {
                                         gen.writeEndObject();
                                     }
                                     gen.writeEndObject();
+                                    gen.writeFieldName("environment");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "keyword");
+                                        gen.writeNumberField("ignore_above", 512);
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("application");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "keyword");
+                                        gen.writeNumberField("ignore_above", 512);
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("version");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "keyword");
+                                        gen.writeNumberField("ignore_above", 512);
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("pod");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "keyword");
+                                        gen.writeNumberField("ignore_above", 512);
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
+                                    gen.writeFieldName("node");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "keyword");
+                                        gen.writeNumberField("ignore_above", 512);
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
                                 }
                                 gen.writeEndObject();
                             }
