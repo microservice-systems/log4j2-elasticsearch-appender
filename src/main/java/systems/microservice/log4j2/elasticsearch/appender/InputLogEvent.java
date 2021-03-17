@@ -73,6 +73,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                          long lostSize,
                          String name,
                          String url,
+                         String user,
                          String index,
                          boolean enable,
                          int countMax,
@@ -165,6 +166,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 }
                 addField(gen, "appender.name", name, 256);
                 addField(gen, "appender.url", url, lengthStringMax);
+                addField(gen, "appender.user", user, 256);
                 addField(gen, "appender.index", index, 256);
                 gen.writeBooleanField("appender.enable", enable);
                 gen.writeNumberField("appender.count.max", countMax);

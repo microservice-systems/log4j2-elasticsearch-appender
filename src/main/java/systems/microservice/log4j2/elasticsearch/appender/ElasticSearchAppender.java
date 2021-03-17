@@ -196,6 +196,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     final AtomicLong lostSize = ElasticSearchAppender.this.lostSize;
                     final String name = ElasticSearchAppender.this.getName();
                     final String url = ElasticSearchAppender.this.url;
+                    final String user = ElasticSearchAppender.this.user;
                     final String index = ElasticSearchAppender.this.index;
                     final boolean enable = ElasticSearchAppender.this.enable;
                     final int countMax = ElasticSearchAppender.this.countMax;
@@ -216,8 +217,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
                     final Buffer buffer1 = ElasticSearchAppender.this.buffer1;
                     final Buffer buffer2 = ElasticSearchAppender.this.buffer2;
                     try {
-                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is started: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetryCount=%d bulkRetryDelay=%d eventSizeStartFinish=%d eventSizeDefault=%d eventSizeException=%d lengthStringMax=%d out=%b debug=%b setDefaultUncaughtExceptionHandler=%b",
-                                                                                                        name, url, index, enable,
+                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is started: name='%s' url='%s' user='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetryCount=%d bulkRetryDelay=%d eventSizeStartFinish=%d eventSizeDefault=%d eventSizeException=%d lengthStringMax=%d out=%b debug=%b setDefaultUncaughtExceptionHandler=%b",
+                                                                                                        name, url, user, index, enable,
                                                                                                         countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetryCount, bulkRetryDelay, eventSizeStartFinish, eventSizeDefault, eventSizeException, lengthStringMax,
                                                                                                         out, debug, setDefaultUncaughtExceptionHandler));
                         long pt = System.currentTimeMillis();
@@ -269,6 +270,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                                      lostSize.get(),
                                                      name,
                                                      url,
+                                                     user,
                                                      index,
                                                      enable,
                                                      countMax,
@@ -300,8 +302,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
                             ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, e.getMessage());
                         }
                     } finally {
-                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is finished: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetryCount=%d bulkRetryDelay=%d eventSizeStartFinish=%d eventSizeDefault=%d eventSizeException=%d lengthStringMax=%d out=%b debug=%b setDefaultUncaughtExceptionHandler=%b totalCount=%d totalSize=%d lostCount=%d lostSize=%d",
-                                                                                                        name, url, index, enable,
+                        ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is finished: name='%s' url='%s' user='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetryCount=%d bulkRetryDelay=%d eventSizeStartFinish=%d eventSizeDefault=%d eventSizeException=%d lengthStringMax=%d out=%b debug=%b setDefaultUncaughtExceptionHandler=%b totalCount=%d totalSize=%d lostCount=%d lostSize=%d",
+                                                                                                        name, url, user, index, enable,
                                                                                                         countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetryCount, bulkRetryDelay, eventSizeStartFinish, eventSizeDefault, eventSizeException, lengthStringMax,
                                                                                                         out, debug, setDefaultUncaughtExceptionHandler,
                                                                                                         totalCount.get(), totalSize.get(), lostCount.get(), lostSize.get()));
@@ -333,6 +335,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                      lostSize.get(),
                                      name,
                                      url,
+                                     user,
                                      index,
                                      enable,
                                      countMax,
@@ -348,8 +351,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                      lengthStringMax,
                                      out,
                                      setDefaultUncaughtExceptionHandler));
-            ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is initialized: name='%s' url='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetryCount=%d bulkRetryDelay=%d eventSizeStartFinish=%d eventSizeDefault=%d eventSizeException=%d lengthStringMax=%d out=%b debug=%b setDefaultUncaughtExceptionHandler=%b",
-                                                                                            name, url, index, enable,
+            ElasticSearchAppender.logSystem(out, ElasticSearchAppender.class, String.format("Log4j2 ElasticSearch Appender is initialized: name='%s' url='%s' user='%s' index='%s' enable=%b countMax=%d sizeMax=%d bulkCountMax=%d bulkSizeMax=%d delayMax=%d bulkRetryCount=%d bulkRetryDelay=%d eventSizeStartFinish=%d eventSizeDefault=%d eventSizeException=%d lengthStringMax=%d out=%b debug=%b setDefaultUncaughtExceptionHandler=%b",
+                                                                                            name, url, user, index, enable,
                                                                                             countMax, sizeMax, bulkCountMax, bulkSizeMax, delayMax, bulkRetryCount, bulkRetryDelay, eventSizeStartFinish, eventSizeDefault, eventSizeException, lengthStringMax,
                                                                                             out, debug, setDefaultUncaughtExceptionHandler));
         } else {

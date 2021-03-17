@@ -612,6 +612,14 @@ final class RestHighLevelClient {
                                                 gen.writeBooleanField("index", true);
                                             }
                                             gen.writeEndObject();
+                                            gen.writeFieldName("user");
+                                            gen.writeStartObject();
+                                            {
+                                                gen.writeStringField("type", "keyword");
+                                                gen.writeNumberField("ignore_above", 256);
+                                                gen.writeBooleanField("index", true);
+                                            }
+                                            gen.writeEndObject();
                                             gen.writeFieldName("index");
                                             gen.writeStartObject();
                                             {
