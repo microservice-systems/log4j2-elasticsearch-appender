@@ -1083,6 +1083,14 @@ final class RestHighLevelClient {
                                         gen.writeBooleanField("index", true);
                                     }
                                     gen.writeEndObject();
+                                    gen.writeFieldName("namespace");
+                                    gen.writeStartObject();
+                                    {
+                                        gen.writeStringField("type", "keyword");
+                                        gen.writeNumberField("ignore_above", 512);
+                                        gen.writeBooleanField("index", true);
+                                    }
+                                    gen.writeEndObject();
                                     gen.writeFieldName("pod");
                                     gen.writeStartObject();
                                     {
@@ -1186,11 +1194,7 @@ final class RestHighLevelClient {
             }
         }
         if (e == null) {
-            BulkResponse r = new BulkResponse();
-            r.took = 0L;
-            r.errors = false;
-            r.items = new LinkedList<>();
-            return r;
+            return new BulkResponse();
         } else {
             throw e;
         }

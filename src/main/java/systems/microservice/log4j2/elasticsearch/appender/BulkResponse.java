@@ -20,6 +20,7 @@ package systems.microservice.log4j2.elasticsearch.appender;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -28,9 +29,9 @@ import java.util.List;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 final class BulkResponse {
-    @JsonProperty("took")   public long took;
-    @JsonProperty("errors") public boolean errors;
-    @JsonProperty("items")  public List<Item> items;
+    @JsonProperty("took")   public long took = 0L;
+    @JsonProperty("errors") public boolean errors = false;
+    @JsonProperty("items")  public List<Item> items = new LinkedList<>();
 
     public static final class Item {
         @JsonProperty("create") public Create create;
