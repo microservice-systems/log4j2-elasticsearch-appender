@@ -52,7 +52,7 @@ final class RestHighLevelClient {
             conn.setDoOutput(true);
             conn.setDoInput(true);
             conn.setRequestProperty("Content-Type", "application/smile");
-            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("Accept", "application/smile");
             conn.connect();
             try {
                 return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
@@ -74,7 +74,7 @@ final class RestHighLevelClient {
             conn.setDoOutput(true);
             conn.setDoInput(true);
             conn.setRequestProperty("Content-Type", "application/smile");
-            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("Accept", "application/smile");
             conn.connect();
             try {
                 try (OutputStream out = conn.getOutputStream()) {
@@ -1137,7 +1137,7 @@ final class RestHighLevelClient {
         conn.setDoOutput(true);
         conn.setDoInput(true);
         conn.setRequestProperty("Content-Type", "application/smile");
-        conn.setRequestProperty("Accept", "application/json");
+        conn.setRequestProperty("Accept", "application/smile");
         conn.connect();
         try {
             try (OutputStream out = conn.getOutputStream()) {
@@ -1164,7 +1164,7 @@ final class RestHighLevelClient {
                 }
             }
             try (InputStream in = conn.getInputStream()) {
-                return JsonUtil.readBytes(in, BulkResponse.class);
+                return SmileUtil.readBytes(in, BulkResponse.class);
             }
         } finally {
             conn.disconnect();
