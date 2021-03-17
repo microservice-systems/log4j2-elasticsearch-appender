@@ -65,6 +65,9 @@ final class RestHighLevelClient {
             conn.setDoInput(true);
             conn.setRequestProperty("Content-Type", "application/smile");
             conn.setRequestProperty("Accept", "application/smile");
+            if (auth != null) {
+                conn.setRequestProperty("Authorization", auth);
+            }
             conn.connect();
             try {
                 return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
@@ -87,6 +90,9 @@ final class RestHighLevelClient {
             conn.setDoInput(true);
             conn.setRequestProperty("Content-Type", "application/smile");
             conn.setRequestProperty("Accept", "application/smile");
+            if (auth != null) {
+                conn.setRequestProperty("Authorization", auth);
+            }
             conn.connect();
             try {
                 try (OutputStream out = conn.getOutputStream()) {
@@ -1158,6 +1164,9 @@ final class RestHighLevelClient {
         conn.setDoInput(true);
         conn.setRequestProperty("Content-Type", "application/smile");
         conn.setRequestProperty("Accept", "application/smile");
+        if (auth != null) {
+            conn.setRequestProperty("Authorization", auth);
+        }
         conn.connect();
         try {
             try (OutputStream out = conn.getOutputStream()) {
