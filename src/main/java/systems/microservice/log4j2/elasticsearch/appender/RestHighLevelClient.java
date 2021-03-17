@@ -27,7 +27,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.*;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Random;
 
 /**
  * @author Dmitry Kotlyarov
@@ -37,9 +43,15 @@ final class RestHighLevelClient {
     private static final SmileFactory SMILE_FACTORY = new SmileFactory();
 
     private final URL[] urls;
+    private final String auth;
 
-    public RestHighLevelClient(URL[] urls) {
+    public RestHighLevelClient(URL[] urls, String user, String password) {
         this.urls = urls;
+        if ((user != null) && (password != null) && !user.isEmpty()) {
+            this.auth = "Basic " + new String(Base64.getEncoder().encode(String.format("%s:%s", user, password).getBytes(StandardCharsets.UTF_8)));
+        } else {
+            this.auth = null;
+        }
     }
 
     private boolean indexExists(URL url, String index) {

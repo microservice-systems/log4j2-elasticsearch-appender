@@ -32,9 +32,16 @@ import org.apache.logging.log4j.core.layout.PatternLayout;
 
 import java.io.Serializable;
 import java.lang.management.ManagementFactory;
-import java.net.*;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.security.SecureRandom;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -58,6 +65,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
     private final AtomicLong lostCount = new AtomicLong(0L);
     private final AtomicLong lostSize = new AtomicLong(0L);
     private final String url;
+    private final String user;
     private final String index;
     private final boolean enable;
     private final int countMax;
@@ -81,6 +89,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
 
     public ElasticSearchAppender(String name,
                                  String url,
+                                 String user,
+                                 String password,
                                  String index,
                                  boolean enable,
                                  int countMax,
@@ -136,6 +146,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         }
 
         this.url = url;
+        this.user = user;
         this.index = index;
         this.enable = enable;
         this.countMax = countMax;
@@ -154,7 +165,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         this.setDefaultUncaughtExceptionHandler = setDefaultUncaughtExceptionHandler;
 
         if ((url != null) && (index != null) && enable) {
-            this.client = createClient(url);
+            this.client = createClient(url, user, password);
             this.buffer1 = new Buffer(countMax, sizeMax, bulkCountMax, bulkSizeMax, bulkRetryCount, bulkRetryDelay);
             this.buffer2 = new Buffer(countMax, sizeMax, bulkCountMax, bulkSizeMax, bulkRetryCount, bulkRetryDelay);
             if (setDefaultUncaughtExceptionHandler) {
@@ -373,6 +384,10 @@ public final class ElasticSearchAppender extends AbstractAppender {
         return url;
     }
 
+    public String getUser() {
+        return user;
+    }
+
     public String getIndex() {
         return index;
     }
@@ -501,6 +516,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
     @PluginFactory
     public static ElasticSearchAppender createAppender(@PluginAttribute("name") String name,
                                                        @PluginAttribute("url") String url,
+                                                       @PluginAttribute("user") String user,
+                                                       @PluginAttribute("password") String password,
                                                        @PluginAttribute("index") String index,
                                                        @PluginAttribute("enable") String enable,
                                                        @PluginAttribute("countMax") String countMax,
@@ -521,6 +538,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
                                                        @PluginElement("Layout") Layout<? extends Serializable> layout) {
         return new ElasticSearchAppender((name != null) ? name : "elasticsearch",
                                          getProperty("log4j2.elasticsearch.url", "LOG4J2_ELASTICSEARCH_URL", url, null),
+                                         getProperty("log4j2.elasticsearch.user", "LOG4J2_ELASTICSEARCH_USER", user, null),
+                                         getProperty("log4j2.elasticsearch.password", "LOG4J2_ELASTICSEARCH_PASSWORD", password, null),
                                          getProperty("log4j2.elasticsearch.index", "LOG4J2_ELASTICSEARCH_INDEX", index, null),
                                          Boolean.parseBoolean(getProperty("log4j2.elasticsearch.enable", "LOG4J2_ELASTICSEARCH_ENABLE", enable, "true")),
                                          Integer.parseInt(getProperty("log4j2.elasticsearch.count.max", "LOG4J2_ELASTICSEARCH_COUNT_MAX", countMax, "20000")),
@@ -651,7 +670,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
         }
     }
 
-    private static RestHighLevelClient createClient(String url) {
+    private static RestHighLevelClient createClient(String url, String user, String password) {
         if (url == null) {
             throw new IllegalArgumentException("url can't be null");
         }
@@ -664,7 +683,7 @@ public final class ElasticSearchAppender extends AbstractAppender {
             for (int i = 0, ci = us.length; i < ci; ++i) {
                 hs[i] = new URL(us[i].trim());
             }
-            return new RestHighLevelClient(hs);
+            return new RestHighLevelClient(hs, user, password);
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException(e);
         }
