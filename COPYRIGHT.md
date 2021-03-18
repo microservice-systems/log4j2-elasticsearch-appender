@@ -1,4 +1,4 @@
-Copyright (C) 2020 Dmitry Kotlyarov.
+Copyright (C) 2020 Microservice Systems, Inc.
 All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
