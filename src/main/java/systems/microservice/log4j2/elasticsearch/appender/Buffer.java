@@ -91,6 +91,7 @@ final class Buffer {
                       RestHighLevelClient client,
                       String name,
                       String url,
+                      String user,
                       String index,
                       int buffer,
                       AtomicLong lostCount,
@@ -98,9 +99,9 @@ final class Buffer {
                       boolean out,
                       boolean debug) {
         if (debug) {
-            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("[BEGIN]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
+            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("[BEGIN]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
                                                                              enabled.get(), client.toString(),
-                                                                             name, url, index,
+                                                                             name, url, user, index,
                                                                              buffer, lostCount.get(), lostSize.get(),
                                                                              out, debug));
         }
@@ -124,7 +125,7 @@ final class Buffer {
                             }
                             e.index = idx.name;
                             if ((bc >= bulkCountMax) || (bs >= bulkSizeMax)) {
-                                putEvents(enabled, client, name, url, index, buffer, lostCount, lostSize, out, debug, r);
+                                putEvents(enabled, client, name, url, user, index, buffer, lostCount, lostSize, out, debug, r);
                                 r = new BulkRequest(bulkCountMax);
                                 bc = 0;
                                 bs = 0L;
@@ -133,7 +134,7 @@ final class Buffer {
                             bc++;
                             bs += e.size;
                         }
-                        putEvents(enabled, client, name, url, index, buffer, lostCount, lostSize, out, debug, r);
+                        putEvents(enabled, client, name, url, user, index, buffer, lostCount, lostSize, out, debug, r);
                     } finally {
                         eventsList.clear();
                         eventsQueue.clear();
@@ -146,9 +147,9 @@ final class Buffer {
             }
         } finally {
             if (debug) {
-                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("[END]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
+                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("[END]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
                                                                                  enabled.get(), client.toString(),
-                                                                                 name, url, index,
+                                                                                 name, url, user, index,
                                                                                  buffer, lostCount.get(), lostSize.get(),
                                                                                  out, debug));
             }
@@ -159,6 +160,7 @@ final class Buffer {
                            RestHighLevelClient client,
                            String name,
                            String url,
+                           String user,
                            String index,
                            int buffer,
                            AtomicLong lostCount,
@@ -167,9 +169,9 @@ final class Buffer {
                            boolean debug,
                            BulkRequest request) {
         if (debug) {
-            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("  [BEGIN]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
+            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("  [BEGIN]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
                                                                              enabled.get(), client.toString(),
-                                                                             name, url, index,
+                                                                             name, url, user, index,
                                                                              buffer, lostCount.get(), lostSize.get(),
                                                                              out, debug,
                                                                              request.numberOfActions()));
@@ -194,7 +196,7 @@ final class Buffer {
                                 fc++;
                                 fs += e.size;
                             }
-                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s) is failed with %s: %s", i, request.numberOfActions(), name, url, index, ex.getClass().getSimpleName(), ex.getMessage()));
+                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s, %s) is failed with %s: %s", i, request.numberOfActions(), name, url, user, index, ex.getClass().getSimpleName(), ex.getMessage()));
                             if (Util.delay(enabled, bulkRetryDelay, 200L)) {
                                 continue;
                             } else {
@@ -229,7 +231,7 @@ final class Buffer {
                                     fs += e.size;
                                 }
                             }
-                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s) contains %d failed events of size %d", i, request.numberOfActions(), name, url, index, fc, fs));
+                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s, %s) contains %d failed events of size %d", i, request.numberOfActions(), name, url, user, index, fc, fs));
                             request = r;
                         }
                         if (!Util.delay(enabled, bulkRetryDelay, 200L)) {
@@ -247,9 +249,9 @@ final class Buffer {
             }
         } finally {
             if (debug) {
-                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("  [END]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
+                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("  [END]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
                                                                                  enabled.get(), client.toString(),
-                                                                                 name, url, index,
+                                                                                 name, url, user, index,
                                                                                  buffer, lostCount.get(), lostSize.get(),
                                                                                  out, debug,
                                                                                  request.numberOfActions()));
