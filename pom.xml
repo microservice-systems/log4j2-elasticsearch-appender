@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright (C) 2020 Dmitry Kotlyarov.
+  ~ Copyright (C) 2020 Microservice Systems, Inc.
   ~ All Rights Reserved.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +21,7 @@
 
     <groupId>systems.microservice</groupId>
     <artifactId>log4j2-elasticsearch-appender</artifactId>
-    <version>2.11.2-7.3.0-1.0.0</version>
+    <version>2.0.0</version>
     <packaging>jar</packaging>
 
     <name>Log4j2 ElasticSearch Appender</name>
@@ -41,10 +41,10 @@
         <developer>
             <id>dmktv</id>
             <name>Dmitry Kotlyarov</name>
-            <email>dmktv@apphub.pro</email>
+            <email>dmktv@microservice.systems</email>
             <url>https://github.com/dmktv</url>
-            <organization>AppHub</organization>
-            <organizationUrl>https://www.apphub.pro</organizationUrl>
+            <organization>Microservice Systems, Inc.</organization>
+            <organizationUrl>https://microservice.systems</organizationUrl>
             <roles>
                 <role>architect</role>
                 <role>developer</role>
@@ -67,9 +67,9 @@
             <version>2.11.2</version>
         </dependency>
         <dependency>
-            <groupId>org.elasticsearch.client</groupId>
-            <artifactId>elasticsearch-rest-high-level-client</artifactId>
-            <version>7.3.0</version>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-smile</artifactId>
+            <version>2.12.2</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

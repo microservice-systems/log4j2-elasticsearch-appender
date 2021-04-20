@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Dmitry Kotlyarov.
+ * Copyright (C) 2020 Microservice Systems, Inc.
  * All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Dmitry Kotlyarov
  * @since 1.0
  */
-public final class ThreadSection {
+final class ThreadSection {
     private final AtomicBoolean enabled;
     private final AtomicLong threads = new AtomicLong(0L);
 

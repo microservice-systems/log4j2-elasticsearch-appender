@@ -15,26 +15,31 @@
  * limitations under the License.
  */
 
-package systems.microservice.log4j2.elasticsearch.appender.test3;
+package systems.microservice.log4j2.elasticsearch.appender;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.junit.Test;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Dmitry Kotlyarov
- * @since 1.0
+ * @since 2.0
  */
-public class Test3 {
-    private static final Logger log = LogManager.getLogger(Test3.class);
+final class BulkRequest {
+    private final ArrayList<InputLogEvent> events;
 
-    public Test3() {
+    public BulkRequest(int bulkCountMax) {
+        this.events = new ArrayList<>(bulkCountMax);
     }
 
-    @Test
-    public void test() throws Exception {
-        for (int i = 0; i < 1048576; ++i) {
-            log.info("Hello, World {}", i);
-        }
+    public List<InputLogEvent> events() {
+        return events;
+    }
+
+    public void add(InputLogEvent event) {
+        events.add(event);
+    }
+
+    public int numberOfActions() {
+        return events.size();
     }
 }

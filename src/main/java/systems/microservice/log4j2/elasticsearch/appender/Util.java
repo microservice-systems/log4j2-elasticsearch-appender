@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Dmitry Kotlyarov.
+ * Copyright (C) 2020 Microservice Systems, Inc.
  * All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * @author Dmitry Kotlyarov
  * @since 1.0
  */
-public final class Util {
+final class Util {
     public static final String EMPTY_STRING = "";
     public static final Charset CHARSET_UTF8 = Charset.forName("UTF-8");
 
