@@ -460,8 +460,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
 
     @Override
     public void start() {
+        super.start();
         if (!enabled.get()) {
-            super.start();
             if (flushThread != null) {
                 enabled.set(true);
                 flushThread.setDaemon(false);
@@ -472,8 +472,8 @@ public final class ElasticSearchAppender extends AbstractAppender {
 
     @Override
     public void stop() {
+        super.stop();
         if (enabled.get()) {
-            super.stop();
             if (flushThread != null) {
                 enabled.set(false);
                 if (flushThread.isAlive()) {
