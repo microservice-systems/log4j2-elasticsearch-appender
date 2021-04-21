@@ -99,11 +99,11 @@ final class Buffer {
                       boolean out,
                       boolean debug) {
         if (debug) {
-            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("[BEGIN]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
-                                                                             enabled.get(), client.toString(),
-                                                                             name, url, user, index,
-                                                                             buffer, lostCount.get(), lostSize.get(),
-                                                                             out, debug));
+            ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("[BEGIN]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
+                                                                                      enabled.get(), client.toString(),
+                                                                                      name, url, user, index,
+                                                                                      buffer, lostCount.get(), lostSize.get(),
+                                                                                      out, debug));
         }
         try {
             section.disable();
@@ -147,11 +147,11 @@ final class Buffer {
             }
         } finally {
             if (debug) {
-                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("[END]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
-                                                                                 enabled.get(), client.toString(),
-                                                                                 name, url, user, index,
-                                                                                 buffer, lostCount.get(), lostSize.get(),
-                                                                                 out, debug));
+                ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("[END]: public void Buffer.flush(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b)",
+                                                                                          enabled.get(), client.toString(),
+                                                                                          name, url, user, index,
+                                                                                          buffer, lostCount.get(), lostSize.get(),
+                                                                                          out, debug));
             }
         }
     }
@@ -169,12 +169,12 @@ final class Buffer {
                            boolean debug,
                            BulkRequest request) {
         if (debug) {
-            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("  [BEGIN]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
-                                                                             enabled.get(), client.toString(),
-                                                                             name, url, user, index,
-                                                                             buffer, lostCount.get(), lostSize.get(),
-                                                                             out, debug,
-                                                                             request.numberOfActions()));
+            ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("  [BEGIN]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
+                                                                                      enabled.get(), client.toString(),
+                                                                                      name, url, user, index,
+                                                                                      buffer, lostCount.get(), lostSize.get(),
+                                                                                      out, debug,
+                                                                                      request.numberOfActions()));
         }
         try {
             int fc = 0;
@@ -182,7 +182,7 @@ final class Buffer {
             try {
                 for (int i = 0; (request.numberOfActions() > 0) && (i < bulkRetryCount); ++i) {
                     if (debug) {
-                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("    [BEGIN]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
+                        ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("    [BEGIN]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
                     }
                     try {
                         BulkResponse rsp = null;
@@ -196,7 +196,7 @@ final class Buffer {
                                 fc++;
                                 fs += e.size;
                             }
-                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s, %s) is failed with %s: %s", i, request.numberOfActions(), name, url, user, index, ex.getClass().getSimpleName(), ex.getMessage()));
+                            ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s, %s) is failed with %s: %s", i, request.numberOfActions(), name, url, user, index, ex.getClass().getSimpleName(), ex.getMessage()));
                             if (Util.delay(enabled, bulkRetryDelay, 200L)) {
                                 continue;
                             } else {
@@ -214,11 +214,11 @@ final class Buffer {
                                 if ((ir.create != null) && (ir.create.error != null)) {
                                     fids.add(ir.create.id);
                                     if (debug) {
-                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("      [ERROR]: %s", JsonUtil.toString(ir)));
+                                        ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("      [ERROR]: %s", JsonUtil.toString(ir)));
                                     }
                                 } else {
                                     if (debug) {
-                                        ElasticSearchAppender.logSystem(out, Buffer.class, String.format("      [OK]: %s", JsonUtil.toString(ir)));
+                                        ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("      [OK]: %s", JsonUtil.toString(ir)));
                                     }
                                 }
                             }
@@ -231,7 +231,7 @@ final class Buffer {
                                     fs += e.size;
                                 }
                             }
-                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s, %s) contains %d failed events of size %d", i, request.numberOfActions(), name, url, user, index, fc, fs));
+                            ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("Attempt %d to put %d events to ElasticSearch (%s, %s, %s, %s) contains %d failed events of size %d", i, request.numberOfActions(), name, url, user, index, fc, fs));
                             request = r;
                         }
                         if (!Util.delay(enabled, bulkRetryDelay, 200L)) {
@@ -239,7 +239,7 @@ final class Buffer {
                         }
                     } finally {
                         if (debug) {
-                            ElasticSearchAppender.logSystem(out, Buffer.class, String.format("    [END]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
+                            ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("    [END]: private void Buffer.putEvents.for (int i = 0; (request.numberOfActions=%d > 0) && (i=%d < bulkRetryCount=%d); ++i=%d) {fc=%d, fs=%d}", request.numberOfActions(), i, bulkRetryCount, i, fc, fs));
                         }
                     }
                 }
@@ -249,12 +249,12 @@ final class Buffer {
             }
         } finally {
             if (debug) {
-                ElasticSearchAppender.logSystem(out, Buffer.class, String.format("  [END]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
-                                                                                 enabled.get(), client.toString(),
-                                                                                 name, url, user, index,
-                                                                                 buffer, lostCount.get(), lostSize.get(),
-                                                                                 out, debug,
-                                                                                 request.numberOfActions()));
+                ElasticSearchAppenderSingleton.logSystem(out, Buffer.class, String.format("  [END]: private void Buffer.putEvents(enabled=%b, client='%s', name='%s', url='%s', user='%s', index='%s', buffer=%d, lostCount=%d, lostSize=%d, out=%b, debug=%b, request.numberOfActions=%d)",
+                                                                                          enabled.get(), client.toString(),
+                                                                                          name, url, user, index,
+                                                                                          buffer, lostCount.get(), lostSize.get(),
+                                                                                          out, debug,
+                                                                                          request.numberOfActions()));
             }
         }
     }

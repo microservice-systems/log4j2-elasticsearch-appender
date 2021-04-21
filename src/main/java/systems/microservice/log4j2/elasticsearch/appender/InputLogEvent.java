@@ -47,8 +47,8 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
     private static final long MB = 1048576L;
     private static final int SIZE_OVERHEAD = 64;
     private static final SmileFactory SMILE_FACTORY = new SmileFactory();
-    private static final String PROCESS_UUID = ElasticSearchAppender.PROCESS_UUID.toString();
-    private static final long MOST_SIG_BITS = ElasticSearchAppender.PROCESS_UUID.getMostSignificantBits();
+    private static final String PROCESS_UUID = ElasticSearchAppenderSingleton.PROCESS_UUID.toString();
+    private static final long MOST_SIG_BITS = ElasticSearchAppenderSingleton.PROCESS_UUID.getMostSignificantBits();
     private static final AtomicLong THREAD_LEAST_SIG_BITS = new AtomicLong(0L);
     private static final AtomicLong EVENT_LEAST_SIG_BITS = new AtomicLong(0L);
     private static final ThreadLocal<String> THREAD_UUID = ThreadLocal.withInitial(() -> new UUID(MOST_SIG_BITS, THREAD_LEAST_SIG_BITS.getAndIncrement()).toString());
@@ -90,7 +90,7 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                          boolean out,
                          boolean setDefaultUncaughtExceptionHandler) {
         this.id = new UUID(MOST_SIG_BITS, EVENT_LEAST_SIG_BITS.getAndIncrement()).toString();
-        this.time = start ? ElasticSearchAppender.PROCESS_START : System.currentTimeMillis();
+        this.time = start ? ElasticSearchAppenderSingleton.PROCESS_START : System.currentTimeMillis();
 
         try {
             Thread t = Thread.currentThread();
@@ -104,23 +104,23 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                     gen.writeStringField("type", "FINISH");
                 }
                 gen.writeStringField("platform", "JAVA");
-                gen.writeNumberField("process.id", ElasticSearchAppender.PROCESS_ID);
+                gen.writeNumberField("process.id", ElasticSearchAppenderSingleton.PROCESS_ID);
                 gen.writeStringField("process.uuid", InputLogEvent.PROCESS_UUID);
-                gen.writeNumberField("process.start", ElasticSearchAppender.PROCESS_START);
+                gen.writeNumberField("process.start", ElasticSearchAppenderSingleton.PROCESS_START);
                 if (!start) {
                     gen.writeNumberField("process.finish", time);
                 }
                 addField(gen, "process.variables", createProcessVariables(), lengthStringMax);
                 addField(gen, "process.properties", createProcessProperties(), lengthStringMax);
-                addField(gen, "process.cmdline", Util.loadString(String.format("/proc/%d/cmdline", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-                addField(gen, "process.io", Util.loadString(String.format("/proc/%d/io", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-                addField(gen, "process.limits", Util.loadString(String.format("/proc/%d/limits", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-                addField(gen, "process.mounts", Util.loadString(String.format("/proc/%d/mounts", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-                addField(gen, "process.net.dev", Util.loadString(String.format("/proc/%d/net/dev", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-                addField(gen, "process.net.protocols", Util.loadString(String.format("/proc/%d/net/protocols", ElasticSearchAppender.PROCESS_ID), "unknown"), lengthStringMax);
-                addField(gen, "host.name", ElasticSearchAppender.HOST_NAME, 256);
-                addField(gen, "host.ip", ElasticSearchAppender.HOST_IP, 64);
-                for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
+                addField(gen, "process.cmdline", Util.loadString(String.format("/proc/%d/cmdline", ElasticSearchAppenderSingleton.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.io", Util.loadString(String.format("/proc/%d/io", ElasticSearchAppenderSingleton.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.limits", Util.loadString(String.format("/proc/%d/limits", ElasticSearchAppenderSingleton.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.mounts", Util.loadString(String.format("/proc/%d/mounts", ElasticSearchAppenderSingleton.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.net.dev", Util.loadString(String.format("/proc/%d/net/dev", ElasticSearchAppenderSingleton.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "process.net.protocols", Util.loadString(String.format("/proc/%d/net/protocols", ElasticSearchAppenderSingleton.PROCESS_ID), "unknown"), lengthStringMax);
+                addField(gen, "host.name", ElasticSearchAppenderSingleton.HOST_NAME, 256);
+                addField(gen, "host.ip", ElasticSearchAppenderSingleton.HOST_IP, 64);
+                for (Map.Entry<String, String> e : ElasticSearchAppenderSingleton.LOG_TAGS.entrySet()) {
                     addField(gen, e.getKey(), e.getValue(), lengthStringMax);
                 }
                 gen.writeStringField("logger", ElasticSearchAppender.class.getName());
@@ -215,12 +215,12 @@ final class InputLogEvent implements Comparable<InputLogEvent> {
                 gen.writeNumberField("time", time);
                 gen.writeStringField("type", (ex == null) ? "DEFAULT" : "EXCEPTION");
                 gen.writeStringField("platform", "JAVA");
-                gen.writeNumberField("process.id", ElasticSearchAppender.PROCESS_ID);
+                gen.writeNumberField("process.id", ElasticSearchAppenderSingleton.PROCESS_ID);
                 gen.writeStringField("process.uuid", InputLogEvent.PROCESS_UUID);
-                gen.writeNumberField("process.start", ElasticSearchAppender.PROCESS_START);
-                addField(gen, "host.name", ElasticSearchAppender.HOST_NAME, 256);
-                addField(gen, "host.ip", ElasticSearchAppender.HOST_IP, 64);
-                for (Map.Entry<String, String> e : ElasticSearchAppender.LOG_TAGS.entrySet()) {
+                gen.writeNumberField("process.start", ElasticSearchAppenderSingleton.PROCESS_START);
+                addField(gen, "host.name", ElasticSearchAppenderSingleton.HOST_NAME, 256);
+                addField(gen, "host.ip", ElasticSearchAppenderSingleton.HOST_IP, 64);
+                for (Map.Entry<String, String> e : ElasticSearchAppenderSingleton.LOG_TAGS.entrySet()) {
                     addField(gen, e.getKey(), e.getValue(), lengthStringMax);
                 }
                 addField(gen, "logger", event.getLoggerName(), 512);
